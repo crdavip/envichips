@@ -58,11 +58,11 @@ export function NavLinks({
             href={link.href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
               orientation === "horizontal" && "flex-col gap-1 px-2 py-1 text-xs",
               active
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
             )}
           >
             <Icon className="size-5 shrink-0" />

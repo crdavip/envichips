@@ -1,17 +1,19 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, Package } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLinks } from "@/components/layout/nav-links";
+import { IsoType } from "../logo/isotype";
+import { LogoType } from "../logo/logotype";
 
 export function Sidebar({ userName }: { userName: string }) {
   return (
     <aside className="fixed left-0 top-0 z-30 hidden h-full w-64 flex-col border-r bg-sidebar md:flex">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-2 border-b px-6 py-4">
-        <Package className="size-6 text-primary" />
-        <span className="text-lg font-semibold">Envichips</span>
+      <div className="flex items-center gap-3 border-b px-4 py-3">
+        <IsoType className="size-9 shrink-0" />
+        <LogoType className="h-6 w-auto" />
       </div>
 
       {/* Navigation */}
