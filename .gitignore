@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# gentle
+/.atl
+/lib/generated/prisma
+
+# temp
+cookies.txt
+exploration.md
