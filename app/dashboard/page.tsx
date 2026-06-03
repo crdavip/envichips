@@ -16,6 +16,8 @@ import {
   PlusCircle,
   List,
   Banknote,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,24 +27,32 @@ const stats = [
     value: "$0",
     icon: DollarSign,
     description: "Total de ventas del día",
+    trend: { direction: "up" as const, label: "Sin cambios hoy" },
+    accent: true,
   },
   {
     title: "Pedidos pendientes",
     value: "0",
     icon: ShoppingCart,
     description: "Pedidos por despachar",
+    trend: { direction: "neutral" as const, label: "Sin pedidos nuevos" },
+    accent: false,
   },
   {
     title: "Stock bajo",
     value: "0",
     icon: Package,
     description: "Artículos por reabastecer",
+    trend: { direction: "down" as const, label: "Stock suficiente" },
+    accent: false,
   },
   {
     title: "Clientes en deuda",
     value: "0",
     icon: Users,
     description: "Clientes con saldo pendiente",
+    trend: { direction: "neutral" as const, label: "Sin deudores" },
+    accent: false,
   },
 ];
 
@@ -51,18 +61,55 @@ const quickActions = [
     label: "Nuevo Pedido",
     href: "/dashboard/pedidos/nuevo",
     icon: PlusCircle,
+    description: "Crear un pedido nuevo",
   },
   {
     label: "Ver Artículos",
     href: "/dashboard/articulos",
     icon: List,
+    description: "Gestionar el catálogo",
   },
   {
     label: "Registrar Abono",
     href: "/dashboard/clientes",
     icon: Banknote,
+    description: "Registrar pago de cliente",
   },
 ];
+
+function TrendBadge({
+  direction,
+  label,
+}: {
+  direction: "up" | "down" | "neutral";
+  label: string;
+}) {
+  if (direction === "neutral") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        {label}
+      </span>
+    );
+  }
+
+  const Icon = direction === "up" ? TrendingUp : TrendingDown;
+  const colorClass =
+    direction === "up"
+      ? "text-emerald-600"
+      : "text-red-600";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 text-xs font-medium",
+        colorClass,
+      )}
+    >
+      <Icon className="size-3" />
+      {label}
+    </span>
+  );
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -74,27 +121,64 @@ export default async function DashboardPage() {
   const userName = session.user.name ?? "Usuario";
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Welcome */}
-      <h1 className="text-2xl font-bold">Bienvenido, {userName}</h1>
+      <div className="overflow-hidden rounded-xl bg-gradient-to-br from-primary to-brand-primary/80 px-6 py-6 text-primary-foreground shadow-lg sm:px-8">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Bienvenido, {userName}
+        </h1>
+        <p className="mt-1 text-sm text-primary-foreground/80">
+          Resumen del negocio — {new Date().toLocaleDateString("es-AR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+      </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
-              <CardHeader>
+            <Card
+              key={stat.title}
+              className={cn(
+                "relative overflow-hidden transition-shadow hover:shadow-md",
+                stat.accent &&
+                  "ring-1 ring-primary/20",
+              )}
+            >
+              {stat.accent && (
+                <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-primary/10" />
+              )}
+              <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Icon className="size-4" />
+                  <span
+                    className={cn(
+                      "flex size-8 items-center justify-center rounded-lg",
+                      stat.accent
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
                   {stat.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.description}
-                </p>
+                <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {stat.description}
+                  </p>
+                  <TrendBadge
+                    direction={stat.trend.direction}
+                    label={stat.trend.label}
+                  />
+                </div>
               </CardContent>
             </Card>
           );
@@ -103,8 +187,8 @@ export default async function DashboardPage() {
 
       {/* Quick Actions */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Acciones rápidas</h2>
-        <div className="flex flex-wrap gap-3">
+        <h2 className="mb-3 text-lg font-semibold">Acciones rápidas</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
@@ -112,12 +196,19 @@ export default async function DashboardPage() {
                 key={action.label}
                 href={action.href}
                 className={cn(
-                  buttonVariants({ variant: "default" }),
-                  "flex items-center gap-2",
+                  "group flex items-center gap-4 rounded-xl border p-4 transition-all hover:border-primary/30 hover:shadow-sm",
+                  "bg-card text-card-foreground",
                 )}
               >
-                <Icon className="size-4" />
-                {action.label}
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Icon className="size-5" />
+                </span>
+                <div>
+                  <p className="font-medium">{action.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {action.description}
+                  </p>
+                </div>
               </Link>
             );
           })}
