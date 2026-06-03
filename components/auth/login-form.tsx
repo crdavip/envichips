@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
 import type { ActionState } from "@/app/(auth)/login/page";
 
 export function LoginForm({
@@ -18,6 +19,7 @@ export function LoginForm({
 }) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(loginAction, null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (state?.success) {
@@ -26,12 +28,18 @@ export function LoginForm({
   }, [state, router]);
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Iniciar sesión</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="flex flex-col gap-4">
+    <Card className="w-full max-w-sm shadow-lg">
+      <CardContent className="pt-8">
+        <div className="mb-6 text-center">
+          <h1 className="text-xl font-semibold text-foreground">
+            Iniciar sesión
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ingresá tus credenciales para continuar
+          </p>
+        </div>
+
+        <form action={formAction} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -39,26 +47,58 @@ export function LoginForm({
               name="email"
               type="email"
               placeholder="correo@ejemplo.com"
+              autoComplete="email"
               required
             />
           </div>
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                tabIndex={-1}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {state?.error && (
-            <p className="text-sm text-red-500 font-medium">{state.error}</p>
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <span>{state.error}</span>
+            </div>
           )}
 
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Iniciando sesión..." : "Iniciar sesión"}
+          <Button type="submit" disabled={isPending} className="w-full gap-2">
+            {isPending ? (
+              <>
+                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Iniciando sesión...
+              </>
+            ) : (
+              <>
+                <LogIn className="size-4" />
+                Iniciar sesión
+              </>
+            )}
           </Button>
         </form>
       </CardContent>
