@@ -69,7 +69,7 @@ export function ArticleFilters({ filters, onChange }: ArticleFiltersProps) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
       {/* Categoría filter */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">
@@ -84,8 +84,10 @@ export function ArticleFilters({ filters, onChange }: ArticleFiltersProps) {
             })
           }
         >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Todas" />
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Todas">
+              {filters.categoria ?? "Todas"}
+            </SelectValue>
           </SelectTrigger>
           <SelectPopup>
             <SelectList>
@@ -115,8 +117,10 @@ export function ArticleFilters({ filters, onChange }: ArticleFiltersProps) {
             })
           }
         >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Todas" />
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Todas">
+              {filters.presentacion ?? "Todas"}
+            </SelectValue>
           </SelectTrigger>
           <SelectPopup>
             <SelectList>

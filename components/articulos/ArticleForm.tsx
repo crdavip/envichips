@@ -179,13 +179,15 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
       <div className="flex flex-col gap-1.5">
         <Label>Categoría</Label>
         <SelectRoot
-          value={categoria ?? "__none__"}
+          value={categoria ?? null}
           onValueChange={(value) =>
-            setCategoria(value === "__none__" ? undefined : (value as Categoria))
+            setCategoria(value ? (value as Categoria) : undefined)
           }
         >
           <SelectTrigger className={cn("w-full", inputClass("categoria"))}>
-            <SelectValue placeholder="Seleccionar..." />
+            <SelectValue placeholder="Seleccionar...">
+              {categoria || "Seleccionar..."}
+            </SelectValue>
           </SelectTrigger>
           <SelectPopup>
             <SelectList>
@@ -204,13 +206,15 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
       <div className="flex flex-col gap-1.5">
         <Label>Presentación</Label>
         <SelectRoot
-          value={presentacion ?? "__none__"}
+          value={presentacion ?? null}
           onValueChange={(value) =>
-            setPresentacion(value === "__none__" ? undefined : (value as Presentacion))
+            setPresentacion(value ? (value as Presentacion) : undefined)
           }
         >
           <SelectTrigger className={cn("w-full", inputClass("presentacion"))}>
-            <SelectValue placeholder="Seleccionar..." />
+            <SelectValue placeholder="Seleccionar...">
+              {presentacion || "Seleccionar..."}
+            </SelectValue>
           </SelectTrigger>
           <SelectPopup>
             <SelectList>

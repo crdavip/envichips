@@ -228,7 +228,7 @@ export function PurchaseModal({
                 return (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between rounded-lg border p-2 text-sm"
+                    className="flex items-center justify-between rounded-lg border p-3 text-sm"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{a.nombre}</p>
@@ -259,7 +259,7 @@ export function PurchaseModal({
                 {selectedItems.map((item) => (
                   <div
                     key={item.articuloId}
-                    className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{item.nombre}</p>
@@ -296,7 +296,9 @@ export function PurchaseModal({
 
             {/* Error */}
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
             )}
 
             {/* Actions */}
@@ -408,7 +410,9 @@ export function PurchaseModal({
 
             {/* Error */}
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
             )}
 
             {/* Actions */}

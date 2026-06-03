@@ -65,7 +65,7 @@ export function ArticleRow({ articulo, onEdit, onToggleActivo }: ArticleRowProps
             size="icon-xs"
             onClick={() => onEdit(articulo)}
             title="Editar artículo"
-            className="cursor-pointer"
+            className="cursor-pointer transition-opacity hover:opacity-70"
           >
             <Pencil className="size-3.5" />
           </Button>
@@ -74,7 +74,7 @@ export function ArticleRow({ articulo, onEdit, onToggleActivo }: ArticleRowProps
             size="icon-xs"
             onClick={() => onToggleActivo(articulo)}
             title={articulo.activo ? "Desactivar artículo" : "Reactivar artículo"}
-            className="cursor-pointer"
+            className="cursor-pointer transition-opacity hover:opacity-70"
           >
             {articulo.activo ? (
               <PowerOff className="size-3.5 text-muted-foreground" />

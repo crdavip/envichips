@@ -22,7 +22,7 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
   return (
     <div
       className={cn(
-        "flex cursor-pointer flex-col gap-2 rounded-xl border bg-card p-4 text-sm shadow-xs transition-all hover:shadow-md",
+        "flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-5 text-sm shadow-xs transition-all hover:shadow-md",
         !articulo.activo && "opacity-50",
       )}
       onClick={() => onEdit(articulo)}
@@ -63,7 +63,7 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
       </div>
 
       {/* Stock badge */}
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex items-center justify-between pt-2">
         <StockBadge
           stockActual={articulo.stockActual}
           stockMinimo={articulo.stockMinimo}
@@ -74,7 +74,7 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
             e.stopPropagation();
             onToggleActivo(articulo);
           }}
-          className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
           type="button"
         >
           {articulo.activo ? "Desactivar" : "Activar"}

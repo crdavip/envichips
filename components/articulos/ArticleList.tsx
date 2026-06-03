@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, RefreshCw, ShoppingCart } from "lucide-react";
+import { ArrowDown, ArrowUp, Package, Plus, RefreshCw, ShoppingCart } from "lucide-react";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import {
   deleteArticuloAction,
@@ -16,7 +16,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableCell,
 } from "@/components/ui/table";
 import {
   Dialog,
@@ -32,6 +31,21 @@ import { ArticleCard } from "@/components/articulos/ArticleCard";
 import { ArticleRow } from "@/components/articulos/ArticleRow";
 import { ArticleForm } from "@/components/articulos/ArticleForm";
 import { PurchaseModal } from "@/components/articulos/PurchaseModal";
+
+// ─── Sort icon helper ─────────────────────────────────
+
+function SortIcon({
+  field,
+  sortBy,
+  sortOrder,
+}: {
+  field: string;
+  sortBy: string;
+  sortOrder: string;
+}) {
+  if (sortBy !== field) return null;
+  return sortOrder === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
+}
 
 // ─── Types ──────────────────────────────────────────
 
@@ -58,11 +72,6 @@ export function ArticleList() {
       setSortBy(field);
       setSortOrder("asc");
     }
-  };
-
-  const SortIcon = ({ field }: { field: string }) => {
-    if (sortBy !== field) return null;
-    return sortOrder === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
   };
 
   // ── Form dialog ──
@@ -92,7 +101,8 @@ export function ArticleList() {
   }, []);
 
   useEffect(() => {
-    fetchArticulos();
+    const timer = setTimeout(() => fetchArticulos(), 0);
+    return () => clearTimeout(timer);
   }, [fetchArticulos]);
 
   // ── Client-side filtering + sorting ──
@@ -175,7 +185,7 @@ export function ArticleList() {
   // ── Loading state ──
   if (loading) {
     return (
-      <div className="space-y-4">
+    <div className="space-y-6">
         {/* Header skeleton */}
         <div className="flex items-center justify-between">
           <Skeleton className="h-7 w-32" />
@@ -216,16 +226,26 @@ export function ArticleList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Artículos</h1>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleCreate}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Package className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-semibold">Artículos</h1>
+            <p className="text-sm text-muted-foreground">
+              Catálogo de productos — {filtered.length} de {articulos.length} artículos
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button onClick={handleCreate} className="w-full sm:w-auto">
             <Plus className="size-4" />
             Nuevo Artículo
           </Button>
-          <Button variant="outline" onClick={() => setPurchaseOpen(true)}>
+          <Button variant="outline" onClick={() => setPurchaseOpen(true)} className="w-full sm:w-auto">
             <ShoppingCart className="size-4" />
             + Compra
           </Button>
@@ -253,12 +273,22 @@ export function ArticleList() {
 
       {/* ─── Empty state ─── */}
       {filtered.length === 0 && !fetching && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16">
-          <p className="text-sm text-muted-foreground">
-            {articulos.length === 0
-              ? "No hay artículos registrados"
-              : "Ningún artículo coincide con los filtros"}
-          </p>
+        <div className="flex flex-col items-center justify-center gap-4 py-20">
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/5 text-primary/40">
+            <Package className="size-7" />
+          </span>
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground">
+              {articulos.length === 0
+                ? "No hay artículos registrados"
+                : "Ningún artículo coincide con los filtros"}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {articulos.length === 0
+                ? "Creá tu primer artículo para empezar"
+                : "Probá con otros filtros o palabras clave"}
+            </p>
+          </div>
           {articulos.length === 0 && (
             <Button onClick={handleCreate}>
               <Plus className="size-4" />
@@ -269,7 +299,7 @@ export function ArticleList() {
       )}
 
       {/* ─── Grid view (mobile) ─── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:hidden">
         {filtered.map((articulo) => (
           <ArticleCard
             key={articulo.id}
@@ -286,17 +316,17 @@ export function ArticleList() {
           <TableHeader>
             <TableRow>
               <TableHead className="cursor-pointer select-none" onClick={() => handleSort("nombre")}>
-                Nombre <SortIcon field="nombre" />
+                Nombre <SortIcon field="nombre" sortBy={sortBy} sortOrder={sortOrder} />
               </TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead>Presentación</TableHead>
               <TableHead>Costo</TableHead>
               <TableHead className="cursor-pointer select-none" onClick={() => handleSort("precio")}>
-                Precio <SortIcon field="precio" />
+                Precio <SortIcon field="precio" sortBy={sortBy} sortOrder={sortOrder} />
               </TableHead>
               <TableHead>Ganancia</TableHead>
               <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stockActual")}>
-                Stock <SortIcon field="stockActual" />
+                Stock <SortIcon field="stockActual" sortBy={sortBy} sortOrder={sortOrder} />
               </TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-20">Acciones</TableHead>

@@ -57,24 +57,38 @@ export default async function HistorialPage({ params }: Props) {
       </Link>
 
       {/* ─── Header ─── */}
-      <div>
-        <h1 className="text-2xl font-bold">{articulo.nombre}</h1>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-sm text-muted-foreground">Stock actual:</span>
-          <span className="text-3xl font-bold">{articulo.stockActual}</span>
-        </div>
-        <div className="mt-1 flex gap-4 text-sm text-muted-foreground">
-          <span>Precio: {formatCOP(articulo.precio)}</span>
-          <span>Costo: {formatCOP(articulo.costo)}</span>
+      <div className="flex items-start gap-4">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Package className="size-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold">{articulo.nombre}</h1>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-sm text-muted-foreground">Stock:</span>
+              <span className="text-2xl font-bold sm:text-3xl">{articulo.stockActual}</span>
+            </div>
+            <span className="text-sm text-muted-foreground">
+              Precio: {formatCOP(articulo.precio)}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Costo: {formatCOP(articulo.costo)}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ─── Empty state ─── */}
       {movimientos.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 py-16">
-          <Package className="size-12 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-center gap-4 py-20">
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/5 text-primary/40">
+            <Package className="size-7" />
+          </span>
+          <p className="text-sm font-medium text-foreground">
             Sin movimientos registrados
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Los movimientos aparecerán al comprar o vender este artículo
           </p>
         </div>
       )}
@@ -94,7 +108,7 @@ export default async function HistorialPage({ params }: Props) {
               />
 
               {/* Content card */}
-              <div className="rounded-lg border bg-card p-3 text-sm shadow-xs">
+              <div className="rounded-lg border bg-card p-4 text-sm shadow-xs">
                 {/* Date + Type badge */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">

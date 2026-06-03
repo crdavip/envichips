@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function ArticulosPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <ArticleList />
     </div>
   );
