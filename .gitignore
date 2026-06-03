@@ -42,8 +42,14 @@ next-env.d.ts
 
 # gentle
 /.atl
+/.opencode
+
+# prisma
 /lib/generated/prisma
 
 # temp
 cookies.txt
 exploration.md
+
+# docs
+/docs
