@@ -1,0 +1,76 @@
+# openspec/config.yaml
+# SDD configuration for Envichips
+schema: spec-driven
+
+context: |
+  Project: Envichips SaaS — POS & business management for a Colombian snack distributor
+  Stack: Next.js 16.2.7 + React 19.2.4 + TypeScript strict + Tailwind v4 + PostCSS
+  Architecture: Next.js App Router, mobile-first, server actions, Prisma ORM, PostgreSQL
+  UI: Tailwind CSS utility classes, dark mode support, custom CSS variables
+  Auth: NextAuth.js v5 with JWT httpOnly cookies, role-based (SuperAdmin/Admin/Domiciliario)
+  Persistence: openspec (file-based)
+  Strict TDD: false (no test runner configured yet)
+
+rules:
+  proposal:
+    - Each proposal must reference the PRD module it belongs to (Artículos, Pedidos, Clientes, Informes, Usuarios)
+    - Include rollback plan for risky changes (auth, DB schema, data migration)
+    - Write proposals in Spanish (project language)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - All monetary values in COP with no decimals
+    - Date/time in Colombia timezone (COT, UTC-5)
+  design:
+    - Include sequence diagrams for complex flows (pedido creation, inventory updates)
+    - Document architecture decisions with rationale
+    - Follow existing code patterns (App Router, server actions, Prisma services)
+  tasks:
+    - Group by phase, use hierarchical numbering (F0.1, F0.2, etc.)
+    - Keep tasks completable in one session
+    - Reference the PRD sections for each task
+  apply:
+    - Follow existing code patterns in the project
+    - Never commit directly; use feature branches
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: "npm run build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas (schema changes, data migrations)
+    - Update main specs after archiving
+
+testing:
+  strict_tdd: false
+  reason: "No test runner detected in package.json. No test files (*.test.*, *.spec.*, __tests__/) found in the project. Add vitest or jest before enabling strict TDD."
+  test_runner: null
+  test_layers:
+    unit:
+      available: false
+      tool: null
+    integration:
+      available: false
+      tool: null
+    e2e:
+      available: false
+      tool: null
+  coverage:
+    available: false
+    command: null
+  quality_tools:
+    linter:
+      available: true
+      command: "npm run lint (eslint ^9 + eslint-config-next/core-web-vitals + eslint-config-next/typescript)"
+    type_checker:
+      available: true
+      command: "npm run build (TypeScript ^5, strict: true)"
+    formatter:
+      available: false
+      command: null
+
+meta:
+  created: 2026-06-03
+  phase: init
+  project_version: 0.1.0
