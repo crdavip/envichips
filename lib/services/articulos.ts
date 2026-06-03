@@ -99,17 +99,18 @@ export async function reactivateArticulo(id: string) {
 
 // ─── PURCHASE ────────────────────────────────────
 
-export async function registerPurchase(data: RegisterPurchaseInput) {
+export async function registerPurchase(data: RegisterPurchaseInput & { registradaPorId: string }) {
   return db.$transaction(async (tx) => {
     const total = data.items.reduce((sum, item) => sum + item.subtotal, 0);
 
     const compra = await tx.compra.create({
       data: {
+        fecha: data.fecha ? new Date(data.fecha) : new Date(),
         proveedor: data.proveedor,
         metodoPago: data.metodoPago,
         total,
         observaciones: data.observaciones,
-        registradaPorId: "system", // TODO: replace with actual user ID from session
+        registradaPorId: data.registradaPorId,
         items: {
           create: data.items.map((item) => ({
             articuloId: item.articuloId,
@@ -136,7 +137,17 @@ export async function registerPurchase(data: RegisterPurchaseInput) {
 
 // ─── HISTORY ─────────────────────────────────────
 
-export async function getHistorialArticulo(articuloId: string) {
+export interface MovimientoHistorial {
+  fecha: Date;
+  tipo: "entrada" | "salida";
+  cantidad: number;
+  referencia: string;
+  referenciaId: string;
+  responsable: string;
+  stockResultante: number;
+}
+
+export async function getHistorialArticulo(articuloId: string): Promise<MovimientoHistorial[]> {
   const [compraItems, pedidoItems] = await Promise.all([
     db.compraItem.findMany({
       where: { articuloId },
@@ -161,7 +172,8 @@ export async function getHistorialArticulo(articuloId: string) {
     }),
   ]);
 
-  const movements = [
+  // Build unsorted movements
+  const movements: { fecha: Date; tipo: "entrada" | "salida"; cantidad: number; referencia: string; referenciaId: string; responsable: string }[] = [
     ...compraItems.map((item) => ({
       fecha: item.compra.fecha,
       tipo: "entrada" as const,
@@ -180,7 +192,21 @@ export async function getHistorialArticulo(articuloId: string) {
     })),
   ];
 
-  movements.sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+  // Sort ascending to compute running stock, then reverse for display
+  movements.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
-  return movements;
+  // Compute running stock: start from current stock, walk backwards
+  // stockActual = initialStock + sum(entradas) - sum(salidas)
+  // => initialStock = stockActual - sum(entradas) + sum(salidas)
+  // Actually simpler: walk forward from 0, then adjust
+  let running = 0;
+  const withStock = movements.map((m) => {
+    running += m.tipo === "entrada" ? m.cantidad : -m.cantidad;
+    return { ...m, stockResultante: running };
+  });
+
+  // Reverse for display (newest first)
+  withStock.reverse();
+
+  return withStock;
 }

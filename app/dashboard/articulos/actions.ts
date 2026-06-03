@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import {
   getArticulos,
@@ -12,7 +13,7 @@ import {
   registerPurchase,
   getHistorialArticulo,
 } from "@/lib/services/articulos";
-import type { ArticuloFilters } from "@/lib/services/articulos";
+import type { ArticuloFilters, MovimientoHistorial } from "@/lib/services/articulos";
 import {
   createArticuloSchema,
   updateArticuloSchema,
@@ -121,7 +122,15 @@ export async function registerPurchaseAction(
   }
 
   try {
-    const data = await registerPurchase(parsed.data);
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "Debes iniciar sesión para registrar una compra" };
+    }
+
+    const data = await registerPurchase({
+      ...parsed.data,
+      registradaPorId: session.user.id,
+    });
     revalidatePath("/dashboard/articulos");
     return { data };
   } catch (err) {
@@ -130,15 +139,6 @@ export async function registerPurchaseAction(
 }
 
 // ─── HISTORY ──────────────────────────────────────
-
-export interface MovimientoHistorial {
-  fecha: Date;
-  tipo: "entrada" | "salida";
-  cantidad: number;
-  referencia: string;
-  referenciaId: string;
-  responsable: string;
-}
 
 export async function getHistorialArticuloAction(
   id: string,

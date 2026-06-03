@@ -121,10 +121,12 @@ export default async function HistorialPage({ params }: Props) {
                   {mov.cantidad} unidades
                 </p>
 
-                {/* Reference + Responsible */}
+                {/* Reference + Stock resultante */}
                 <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{mov.referencia}</span>
-                  <span>{mov.responsable}</span>
+                  <span className="tabular-nums font-medium">
+                    Stock: {mov.stockResultante}
+                  </span>
                 </div>
               </div>
             </div>

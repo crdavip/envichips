@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw, ShoppingCart } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, RefreshCw, ShoppingCart } from "lucide-react";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import {
   deleteArticuloAction,
@@ -47,6 +47,24 @@ export function ArticleList() {
   const [error, setError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
 
+  // ── Sort ──
+  const [sortBy, setSortBy] = useState<"nombre" | "precio" | "stockActual" | "creadoEn">("nombre");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: "nombre" | "precio" | "stockActual" | "creadoEn") => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortBy !== field) return null;
+    return sortOrder === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
+  };
+
   // ── Form dialog ──
   const [formMode, setFormMode] = useState<FormMode>("closed");
   const [editingArticulo, setEditingArticulo] = useState<Articulo | null>(null);
@@ -77,17 +95,27 @@ export function ArticleList() {
     fetchArticulos();
   }, [fetchArticulos]);
 
-  // ── Client-side filtering ──
-  const filtered = articulos.filter((a) => {
-    if (filtros.categoria && a.categoria !== filtros.categoria) return false;
-    if (filtros.presentacion && a.presentacion !== filtros.presentacion)
-      return false;
-    if (filtros.q) {
-      const q = filtros.q.toLowerCase();
-      if (!a.nombre.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
+  // ── Client-side filtering + sorting ──
+  const filtered = [...articulos]
+    .filter((a) => {
+      if (filtros.categoria && a.categoria !== filtros.categoria) return false;
+      if (filtros.presentacion && a.presentacion !== filtros.presentacion)
+        return false;
+      if (filtros.q) {
+        const q = filtros.q.toLowerCase();
+        if (!a.nombre.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const dir = sortOrder === "asc" ? 1 : -1;
+      switch (sortBy) {
+        case "precio": return (a.precio - b.precio) * dir;
+        case "stockActual": return (a.stockActual - b.stockActual) * dir;
+        case "creadoEn": return (a.creadoEn.getTime() - b.creadoEn.getTime()) * dir;
+        default: return a.nombre.localeCompare(b.nombre) * dir;
+      }
+    });
 
   // ── Handlers ──
   const handleCreate = () => {
@@ -257,13 +285,19 @@ export function ArticleList() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nombre</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("nombre")}>
+                Nombre <SortIcon field="nombre" />
+              </TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead>Presentación</TableHead>
               <TableHead>Costo</TableHead>
-              <TableHead>Precio</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("precio")}>
+                Precio <SortIcon field="precio" />
+              </TableHead>
               <TableHead>Ganancia</TableHead>
-              <TableHead>Stock</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stockActual")}>
+                Stock <SortIcon field="stockActual" />
+              </TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-20">Acciones</TableHead>
             </TableRow>
