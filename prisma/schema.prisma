@@ -1,0 +1,231 @@
+// ─── ENVICHIPS — Prisma Schema ──────────────────────────────
+// Basado en docs/PRD.md v1.1
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USUARIOS ───────────────────────────────────────────
+
+enum Rol {
+  SUPERADMIN
+  ADMIN
+  DOMICILIARIO
+}
+
+model User {
+  id              String   @id @default(uuid())
+  nombre          String
+  email           String   @unique
+  password        String
+  rol             Rol      @default(DOMICILIARIO)
+  activo          Boolean  @default(true)
+  telefono        String?
+  ultimoAcceso    DateTime?
+  creadoEn        DateTime @default(now())
+  creadoPorId     String?
+  creadoPor       User?    @relation("UserCreador", fields: [creadoPorId], references: [id])
+  creados         User[]   @relation("UserCreador")
+  pedidosCreados  Pedido[] @relation("PedidoCreador")
+  pedidosAsignados Pedido[] @relation("PedidoDomiciliario")
+}
+
+// ─── ARTÍCULOS ──────────────────────────────────────────
+
+enum Categoria {
+  PAPA
+  PLATANO
+  MADURO
+  CHICHARRON
+  ROSQUITA
+  ROSCA
+  DETODITO
+  ARITOS
+  OTRO
+}
+
+enum Presentacion {
+  G50
+  G65
+  G250
+  G500
+  OTRO
+}
+
+model Articulo {
+  id           String       @id @default(uuid())
+  nombre       String
+  categoria    Categoria
+  presentacion Presentacion
+  costo        Int          // COP
+  precio       Int          // COP
+  stockActual  Int          @default(0)
+  stockMinimo  Int          @default(0)
+  activo       Boolean      @default(true)
+  creadoEn     DateTime     @default(now())
+  pedidoItems  PedidoItem[]
+  compraItems  CompraItem[]
+}
+
+// ─── CLIENTES ───────────────────────────────────────────
+
+enum TipoDoc {
+  CC
+  TI
+  CE
+  NIT
+  PASAPORTE
+}
+
+model Cliente {
+  id             String   @id @default(uuid())
+  idCliente      String   @unique // CLI-1001
+  nombreCompleto String
+  telefono       String?
+  direccion      String?
+  tipoDoc        TipoDoc?
+  numeroDoc      String?
+  estado         String   @default("AL_DIA") // AL_DIA | EN_DEUDA
+  deuda          Int      @default(0) // calculado, COP
+  limiteCredito  Int?     // COP
+  activo         Boolean  @default(true)
+  notas          String?
+  creadoEn       DateTime @default(now())
+  pedidos        Pedido[]
+  abonos         Abono[]
+}
+
+model Abono {
+  id               String    @id @default(uuid())
+  clienteId        String
+  cliente          Cliente   @relation(fields: [clienteId], references: [id])
+  monto            Int       // COP
+  fecha            DateTime  @default(now())
+  metodoPago       MetodoPago
+  registradoPorId  String
+  notas            String?
+}
+
+// ─── PEDIDOS ────────────────────────────────────────────
+
+enum EstadoPedido {
+  PENDIENTE
+  EN_CAMINO
+  ENTREGADO
+  CANCELADO
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TRANSFERENCIA
+  FIADO
+}
+
+model Pedido {
+  id                 String           @id @default(uuid())
+  numeroPedido       String           @unique // ENV-2026-00001
+  fecha              DateTime         @default(now())
+  clienteId          String?
+  cliente            Cliente?         @relation(fields: [clienteId], references: [id])
+  domiciliarioId     String?
+  domiciliario       User?            @relation("PedidoDomiciliario", fields: [domiciliarioId], references: [id])
+  creadoPorId        String
+  creadoPor          User             @relation("PedidoCreador", fields: [creadoPorId], references: [id])
+  estado             EstadoPedido     @default(PENDIENTE)
+  metodoPago         MetodoPago
+  subtotal           Int              // COP
+  descuento          Int              @default(0)
+  total              Int              // COP
+  dineroCobrado      Boolean?
+  montoCobrado       Int?
+  pagoEntregadoAdmin  Boolean          @default(false)
+  pagoEntregadoEn    DateTime?
+  observaciones      String?
+  creadoEn           DateTime         @default(now())
+  items              PedidoItem[]
+  historialEstados   HistorialEstado[]
+}
+
+model PedidoItem {
+  id         String   @id @default(uuid())
+  pedidoId   String
+  pedido     Pedido   @relation(fields: [pedidoId], references: [id])
+  articuloId String
+  articulo   Articulo @relation(fields: [articuloId], references: [id])
+  cantidad   Int
+  precio     Int      // snapshot COP
+  costo      Int      // snapshot COP
+  subtotal   Int      // COP
+  ganancia   Int      // COP
+}
+
+model HistorialEstado {
+  id             String       @id @default(uuid())
+  pedidoId       String
+  pedido         Pedido       @relation(fields: [pedidoId], references: [id])
+  estadoAntes    EstadoPedido
+  estadoDespues  EstadoPedido
+  cambiadoPorId  String
+  motivo         String?
+  creadoEn       DateTime     @default(now())
+}
+
+// ─── COMPRAS (ENTRADAS DE INVENTARIO) ───────────────────
+
+model Compra {
+  id              String       @id @default(uuid())
+  fecha           DateTime     @default(now())
+  proveedor       String
+  metodoPago      MetodoPago
+  total           Int          // COP
+  observaciones   String?
+  registradaPorId String
+  items           CompraItem[]
+}
+
+model CompraItem {
+  id         String   @id @default(uuid())
+  compraId   String
+  compra     Compra   @relation(fields: [compraId], references: [id])
+  articuloId String
+  articulo   Articulo @relation(fields: [articuloId], references: [id])
+  cantidad   Int
+  costo      Int      // COP por unidad
+  subtotal   Int      // COP
+}
+
+// ─── MOVIMIENTOS DE CAJA ────────────────────────────────
+
+enum TipoMovimiento {
+  INGRESO
+  GASTO
+  PRESTAMO
+}
+
+enum CategoriaMovimiento {
+  COMPRA_MERCANCIA
+  PAGO_DOMICILIARIO
+  ARRIENDO
+  SERVICIOS
+  COBRO_CARTERA
+  PRESTAMO
+  OTRO
+}
+
+model Movimiento {
+  id              String             @id @default(uuid())
+  fecha           DateTime           @default(now())
+  tipo            TipoMovimiento
+  categoria       CategoriaMovimiento
+  monto           Int                // COP
+  descripcion     String
+  metodoPago      MetodoPago
+  registradoPorId String
+  creadoEn        DateTime           @default(now())
+}
