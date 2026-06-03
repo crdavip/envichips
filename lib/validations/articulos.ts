@@ -31,25 +31,29 @@ export const MetodoPagoEnum = z.enum([
 
 // ─── SCHEMAS ───────────────────────────────────────
 
-export const createArticuloSchema = z
-  .object({
-    nombre: z.string().min(1, "El nombre es requerido").max(100),
-    categoria: CategoriaEnum,
-    presentacion: PresentacionEnum,
-    costo: z.number().int().positive("El costo debe ser mayor a 0"),
-    precio: z.number().int().positive("El precio debe ser mayor a 0"),
-    stockMinimo: z
-      .number()
-      .int()
-      .min(0, "El stock mínimo no puede ser negativo")
-      .default(0),
-  })
-  .refine((data) => data.precio > data.costo, {
+// Base schema without refine — needed for partial() to work
+const articuloBaseSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido").max(100),
+  categoria: CategoriaEnum,
+  presentacion: PresentacionEnum,
+  costo: z.number().int().positive("El costo debe ser mayor a 0"),
+  precio: z.number().int().positive("El precio debe ser mayor a 0"),
+  stockMinimo: z
+    .number()
+    .int()
+    .min(0, "El stock mínimo no puede ser negativo")
+    .default(0),
+});
+
+export const createArticuloSchema = articuloBaseSchema.refine(
+  (data) => data.precio > data.costo,
+  {
     message: "El precio debe ser mayor al costo",
     path: ["precio"],
-  });
+  },
+);
 
-export const updateArticuloSchema = createArticuloSchema.partial();
+export const updateArticuloSchema = articuloBaseSchema.partial();
 
 export const purchaseItemSchema = z.object({
   articuloId: z.string().uuid(),
