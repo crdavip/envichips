@@ -10,7 +10,9 @@ import {
   actualizarEstado,
   cancelarPedido,
   confirmarCobroAdmin,
+  validateFiadoDebt,
 } from "@/lib/services/pedidos";
+import { getDeudaCliente } from "@/lib/services/clientes";
 import type { PedidoFilters } from "@/lib/services/pedidos";
 import {
   createPedidoSchema,
@@ -68,6 +70,25 @@ export async function createPedidoAction(
     const session = await auth();
     if (!session?.user?.id) {
       return { error: "Debes iniciar sesión para crear un pedido" };
+    }
+
+    // FIADO debt validation before creating the pedido
+    if (parsed.data.metodoPago === "FIADO" && parsed.data.clienteId) {
+      // Fetch prices to calculate estimated total for validation
+      const articles = await db.articulo.findMany({
+        where: { id: { in: parsed.data.items.map((i) => i.articuloId) } },
+        select: { id: true, precio: true },
+      });
+      const priceMap = new Map(articles.map((a) => [a.id, a.precio]));
+      const subtotal = parsed.data.items.reduce(
+        (s, item) => s + item.cantidad * (priceMap.get(item.articuloId) ?? 0),
+        0,
+      );
+      const estimatedTotal = Math.max(0, subtotal - (parsed.data.descuento ?? 0));
+      const validation = await validateFiadoDebt(parsed.data.clienteId, estimatedTotal);
+      if (!validation.valido) {
+        return { error: "Límite de crédito excedido" };
+      }
     }
 
     const data = await createPedido({
@@ -170,7 +191,7 @@ export async function getClientesAction(
       return { data: [] as { id: string; nombreCompleto: string; telefono: string | null; deuda: number }[] };
     }
 
-    const clientes = await db.cliente.findMany({
+    const rawClientes = await db.cliente.findMany({
       where: {
         activo: true,
         nombreCompleto: { contains: query, mode: "insensitive" },
@@ -179,11 +200,19 @@ export async function getClientesAction(
         id: true,
         nombreCompleto: true,
         telefono: true,
-        deuda: true,
       },
       take: 10,
       orderBy: { nombreCompleto: "asc" },
     });
+
+    // Enrich with real-time deuda
+    const deudas = await Promise.all(
+      rawClientes.map((c) => getDeudaCliente(c.id)),
+    );
+    const clientes = rawClientes.map((c, i) => ({
+      ...c,
+      deuda: deudas[i],
+    }));
     return { data: clientes };
   } catch (err) {
     return {
@@ -248,6 +277,23 @@ export async function getArticulosForPedidoAction(
     return {
       error:
         err instanceof Error ? err.message : "Error al buscar artículos",
+    };
+  }
+}
+
+export async function getDeudaWarningAction(
+  clienteId: string,
+): Promise<
+  | { data: { deuda: number } }
+  | { error: string }
+> {
+  try {
+    const deuda = await getDeudaCliente(clienteId);
+    return { data: { deuda } };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Error al obtener deuda del cliente",
     };
   }
 }

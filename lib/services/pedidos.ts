@@ -7,6 +7,41 @@ import type {
   CreatePedidoInput,
   UpdateEstadoInput,
 } from "@/lib/validations/pedidos";
+import { getClienteById, getDeudaCliente } from "@/lib/services/clientes";
+
+// ─── FIADO VALIDATION ────────────────────────────
+
+export interface FiadoValidationResult {
+  deudaActual: number;
+  limiteCredito: number | null;
+  valido: boolean;
+}
+
+/**
+ * Validate FIADO debt limit before creating a pedido.
+ * If the client has a limiteCredito, checks (deudaActual + pedidoTotal) <= limiteCredito.
+ */
+export async function validateFiadoDebt(
+  clienteId: string,
+  pedidoTotal: number,
+): Promise<FiadoValidationResult> {
+  const cliente = await getClienteById(clienteId);
+  if (!cliente) {
+    throw new Error("Cliente no encontrado");
+  }
+
+  const deudaActual = await getDeudaCliente(clienteId);
+
+  // If limiteCredito is set and > 0, enforce the limit
+  if (cliente.limiteCredito !== null && cliente.limiteCredito > 0) {
+    const totalConDeuda = deudaActual + pedidoTotal;
+    if (totalConDeuda > cliente.limiteCredito) {
+      return { deudaActual, limiteCredito: cliente.limiteCredito, valido: false };
+    }
+  }
+
+  return { deudaActual, limiteCredito: cliente.limiteCredito ?? null, valido: true };
+}
 
 // ─── FILTERS ──────────────────────────────────────
 
@@ -182,19 +217,12 @@ export async function createPedido(data: CreatePedidoInput) {
       },
     });
 
-    // 6. If direct sale (ENTREGADO): decrement stock, handle deuda
+    // 6. If direct sale (ENTREGADO): decrement stock
     if (estado === "ENTREGADO") {
       for (const item of itemsData) {
         await tx.articulo.update({
           where: { id: item.articuloId },
           data: { stockActual: { increment: -item.cantidad } },
-        });
-      }
-
-      if (data.metodoPago === "FIADO" && data.clienteId) {
-        await tx.cliente.update({
-          where: { id: data.clienteId },
-          data: { deuda: { increment: total } },
         });
       }
 
@@ -278,13 +306,7 @@ export async function actualizarEstado(id: string, data: UpdateEstadoInput) {
         });
       }
 
-      // If FIADO: increment cliente.deuda
-      if (pedido.metodoPago === "FIADO" && pedido.clienteId) {
-        await tx.cliente.update({
-          where: { id: pedido.clienteId },
-          data: { deuda: { increment: pedido.total } },
-        });
-      }
+      // NOTE: deuda calculada en tiempo real via clientes service (no se almacena)
     }
 
     // 6. Create HistorialEstado

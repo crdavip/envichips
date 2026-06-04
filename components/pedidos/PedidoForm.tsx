@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -31,6 +32,7 @@ import {
   getClientesAction,
   getDomiciliariosAction,
   getArticulosForPedidoAction,
+  getDeudaWarningAction,
 } from "@/app/dashboard/pedidos/actions";
 import type { MetodoPago } from "@/lib/generated/prisma/client";
 
@@ -278,7 +280,7 @@ export function PedidoForm() {
     };
   }, [articleQuery]);
 
-  // ── Step 3: Domiciliarios list ──
+  // ── Step 3: Domiciliarios list + real-time deuda refresh ──
   const [domiciliarios, setDomiciliarios] = useState<DomiciliarioResult[]>([]);
 
   useEffect(() => {
@@ -290,6 +292,17 @@ export function PedidoForm() {
       });
     }
   }, [currentStep]);
+
+  // Real-time deuda refresh when FIADO + cliente on step 3
+  useEffect(() => {
+    if (currentStep === 3 && metodoPago === "FIADO" && clienteId) {
+      getDeudaWarningAction(clienteId).then((res) => {
+        if ("data" in res) {
+          setClienteDeuda(res.data.deuda);
+        }
+      });
+    }
+  }, [currentStep, metodoPago, clienteId]);
 
   // ── Handlers ──
 
@@ -815,18 +828,41 @@ export function PedidoForm() {
                   )}
                 </div>
 
-                {/* FIADO warning */}
-                {metodoPago === "FIADO" && clienteId && clienteDeuda > 0 && (
-                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                    <div>
-                      <p className="font-medium">Deuda actual del cliente</p>
-                      <p className="text-amber-700 dark:text-amber-500">
-                        Este cliente tiene una deuda de {formatCOP(clienteDeuda)}{" "}
-                        registrada.
-                      </p>
-                    </div>
-                  </div>
+                {/* FIADO debt warning */}
+                {metodoPago === "FIADO" && clienteId && (
+                  <>
+                    {clienteDeuda === 0 ? (
+                      <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-400">
+                        <CheckCircle className="size-4 shrink-0" />
+                        <span className="font-medium">Sin deuda</span>
+                      </div>
+                    ) : clienteDeuda >= 100_000 ? (
+                      <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-400">
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        <div>
+                          <p className="font-medium">
+                            Deuda actual: {formatCOP(clienteDeuda)}
+                          </p>
+                          <p className="text-red-700 dark:text-red-500">
+                            El cliente tiene una deuda elevada.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        <div>
+                          <p className="font-medium">
+                            Deuda actual: {formatCOP(clienteDeuda)}
+                          </p>
+                          <p className="text-amber-700 dark:text-amber-500">
+                            Este cliente tiene una deuda de{" "}
+                            {formatCOP(clienteDeuda)} registrada.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
