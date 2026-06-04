@@ -30,23 +30,22 @@
 **Estimated lines: ~350-400**
 **Target: pr/2/fase-5-informes-dashboard**
 
-- [ ] F2.1: Create `lib/services/informes.ts` with queries:
+- [x] F2.1: Create `lib/services/informes.ts` with queries:
   - getResumenDelDia: ventasHoy, gananciaHoy, pedidosEntregados, pedidosPendientes, stockBajo, sinStock, clientesEnDeuda, totalACobrar
   - All accept dateRange and domiciliarioId filters
   - Use date-fns for date boundaries
   - Use Promise.all(getDeudaCliente) for total a cobrar
-- [ ] F2.2: Modify `app/dashboard/page.tsx` — replace static stats array with Suspense + real data queries
-  - Wrap each card in Suspense boundary with Skeleton fallback
+- [x] F2.2: Modify `app/dashboard/page.tsx` — replace static stats array with Suspense + real data queries
+  - Wrap stats grid in Suspense with Skeleton fallback
   - Keep existing layout and quick actions unchanged
   - Use formatCOP() for monetary values
-  - Use format('es-CO') for date display
-- [ ] F2.3: Create `app/dashboard/informes/page.tsx` — Resumen del día:
-  - Same metrics as dashboard but more detailed
+- [x] F2.3: Create `app/dashboard/informes/page.tsx` — Resumen del día:
+  - Metric cards (ventas, ganancia, pendientes)
+  - Alert cards (stock bajo, sin stock, clientes en deuda)
   - Navigation links to sub-report pages
-  - Global filter bar (date range, domiciliario)
   - Skeleton loading states
-- [ ] F2.4: Verify: `npm run build` passes
-- [ ] F2.5: Commit PR 2
+- [x] F2.4: Verify: `npm run build` passes
+- [x] F2.5: Commit PR 2
 
 ## PR 3 — Ventas + Inventario
 
