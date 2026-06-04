@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
 import {
   DollarSign,
   ShoppingCart,
@@ -59,7 +58,7 @@ const stats = [
 const quickActions = [
   {
     label: "Nuevo Pedido",
-    href: "/dashboard/pedidos/nuevo",
+    href: "/dashboard/pedidos/create",
     icon: PlusCircle,
     description: "Crear un pedido nuevo",
   },

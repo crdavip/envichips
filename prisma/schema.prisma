@@ -32,8 +32,9 @@ model User {
   creadoPorId     String?
   creadoPor       User?    @relation("UserCreador", fields: [creadoPorId], references: [id])
   creados         User[]   @relation("UserCreador")
-  pedidosCreados  Pedido[] @relation("PedidoCreador")
-  pedidosAsignados Pedido[] @relation("PedidoDomiciliario")
+  pedidosCreados   Pedido[]          @relation("PedidoCreador")
+  pedidosAsignados Pedido[]          @relation("PedidoDomiciliario")
+  cambiosEstado    HistorialEstado[]
 }
 
 // ─── ARTÍCULOS ──────────────────────────────────────────
@@ -172,8 +173,20 @@ model HistorialEstado {
   estadoAntes    EstadoPedido
   estadoDespues  EstadoPedido
   cambiadoPorId  String
+  cambiadoPor    User         @relation(fields: [cambiadoPorId], references: [id])
   motivo         String?
   creadoEn       DateTime     @default(now())
+}
+
+// ─── SEQUENCE (CONTADORES) ──────────────────────────
+
+model Sequence {
+  id      String @id @default(uuid())
+  year    Int
+  type    String // "PEDIDO"
+  counter Int    @default(0)
+
+  @@unique([year, type])
 }
 
 // ─── COMPRAS (ENTRADAS DE INVENTARIO) ───────────────────
