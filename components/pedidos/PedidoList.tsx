@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ShoppingCart, RefreshCw, Search, Plus } from "lucide-react";
 import {
   getPedidosAction,
-} from "@/app/dashboard/pedidos/actions";
+} from "@/app/(dashboard)/pedidos/actions";
 import type { PedidoFilters } from "@/lib/services/pedidos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,7 +203,7 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
           </div>
         </div>
         <Link
-          href="/dashboard/pedidos/create"
+          href="/pedidos/create"
           className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
         >
           <Plus className="size-4" />
@@ -349,7 +349,7 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
         {sorted.map((pedido) => (
           <Link
             key={pedido.id}
-            href={`/dashboard/pedidos/${pedido.id}`}
+            href={`/pedidos/${pedido.id}`}
             className="group/card rounded-xl border bg-card p-4 text-sm text-card-foreground shadow-sm transition-all hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-2">
@@ -401,7 +401,7 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
               <TableRow key={pedido.id} className="cursor-pointer">
                 <TableCell>
                   <Link
-                    href={`/dashboard/pedidos/${pedido.id}`}
+                    href={`/pedidos/${pedido.id}`}
                     className="font-mono text-xs font-semibold text-muted-foreground hover:text-foreground"
                   >
                     {pedido.numeroPedido}
@@ -409,7 +409,7 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/dashboard/pedidos/${pedido.id}`}
+                    href={`/pedidos/${pedido.id}`}
                     className="font-medium hover:underline"
                   >
                     {pedido.cliente?.nombreCompleto ?? "Venta rápida"}
@@ -419,7 +419,7 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
                   {formatCOP(pedido.total)}
                 </TableCell>
                 <TableCell>
-                  <Link href={`/dashboard/pedidos/${pedido.id}`}>
+                  <Link href={`/pedidos/${pedido.id}`}>
                     <PedidoStatusBadge estado={pedido.estado} />
                   </Link>
                 </TableCell>
@@ -437,7 +437,7 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
 
       {/* ─── FAB: Nuevo Pedido (mobile) ─── */}
       <Link
-        href="/dashboard/pedidos/create"
+        href="/pedidos/create"
         className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6"
         aria-label="Nuevo Pedido"
       >

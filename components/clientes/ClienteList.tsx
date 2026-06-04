@@ -18,7 +18,7 @@ import type { Cliente } from "@/lib/generated/prisma/client";
 import {
   deleteClienteAction,
   getClientesAction,
-} from "@/app/dashboard/clientes/actions";
+} from "@/app/(dashboard)/clientes/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -538,7 +538,7 @@ function ClienteCard({
 
         <div className="flex gap-1">
           <Link
-            href={`/dashboard/clientes/${cliente.id}`}
+            href={`/clientes/${cliente.id}`}
             className="inline-flex h-6 items-center gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs font-medium text-foreground transition-all hover:bg-muted"
           >
             <ExternalLink className="size-3" />
@@ -579,7 +579,7 @@ function ClienteRowDesktop({
       </TableCell>
       <TableCell className="font-medium">
         <Link
-          href={`/dashboard/clientes/${cliente.id}`}
+          href={`/clientes/${cliente.id}`}
           className="hover:text-primary transition-colors"
         >
           {cliente.nombreCompleto}
@@ -610,7 +610,7 @@ function ClienteRowDesktop({
       <TableCell>
         <div className="flex gap-1">
           <Link
-            href={`/dashboard/clientes/${cliente.id}`}
+            href={`/clientes/${cliente.id}`}
             className="inline-flex h-6 items-center gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs font-medium text-foreground transition-all hover:bg-muted"
           >
             <ExternalLink className="size-3" />

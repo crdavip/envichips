@@ -7,7 +7,7 @@ import {
   deleteArticuloAction,
   getArticulosAction,
   reactivateArticuloAction,
-} from "@/app/dashboard/articulos/actions";
+} from "@/app/(dashboard)/articulos/actions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {

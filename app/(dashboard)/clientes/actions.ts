@@ -88,7 +88,7 @@ export async function createClienteAction(
 
   try {
     const data = await createCliente(parsed.data);
-    revalidatePath("/dashboard/clientes");
+    revalidatePath("/clientes");
     return { data };
   } catch (err) {
     return {
@@ -113,7 +113,7 @@ export async function updateClienteAction(
 
   try {
     const data = await updateCliente(id, parsed.data);
-    revalidatePath("/dashboard/clientes");
+    revalidatePath("/clientes");
     return { data };
   } catch (err) {
     return {
@@ -130,7 +130,7 @@ export async function deleteClienteAction(
 ): Promise<{ data: Cliente } | { error: string }> {
   try {
     const data = await deleteCliente(id);
-    revalidatePath("/dashboard/clientes");
+    revalidatePath("/clientes");
     return { data };
   } catch (err) {
     return {
@@ -167,7 +167,7 @@ export async function registerAbonoAction(
       ...parsed.data,
       registradoPorId: session.user.id,
     });
-    revalidatePath("/dashboard/clientes");
+    revalidatePath("/clientes");
     return { data };
   } catch (err) {
     return {

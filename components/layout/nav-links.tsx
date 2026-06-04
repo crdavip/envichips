@@ -12,11 +12,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/articulos", label: "Artículos", icon: Package },
-  { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingCart },
-  { href: "/dashboard/clientes", label: "Clientes", icon: Users },
-  { href: "/dashboard/informes", label: "Informes", icon: BarChart3 },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/articulos", label: "Artículos", icon: Package },
+  { href: "/pedidos", label: "Pedidos", icon: ShoppingCart },
+  { href: "/clientes", label: "Clientes", icon: Users },
+  { href: "/informes", label: "Informes", icon: BarChart3 },
 ];
 
 export type NavLinksProps = {
@@ -33,8 +33,8 @@ export function NavLinks({
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === href;
+    if (href === "/") {
+      return pathname === "/";
     }
     return pathname.startsWith(href);
   };

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import {
   Card,
@@ -27,19 +26,19 @@ import { formatCOP } from "@/lib/format";
 const quickActions = [
   {
     label: "Nuevo Pedido",
-    href: "/dashboard/pedidos/create",
+    href: "/pedidos/create",
     icon: PlusCircle,
     description: "Crear un pedido nuevo",
   },
   {
     label: "Ver Artículos",
-    href: "/dashboard/articulos",
+    href: "/articulos",
     icon: List,
     description: "Gestionar el catálogo",
   },
   {
     label: "Registrar Abono",
-    href: "/dashboard/clientes",
+    href: "/clientes",
     icon: Banknote,
     description: "Registrar pago de cliente",
   },
@@ -205,12 +204,7 @@ async function DashboardStatsCards() {
 
 export default async function DashboardPage() {
   const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const userName = session.user.name ?? "Usuario";
+  const userName = session?.user?.name ?? "Usuario";
 
   return (
     <div className="space-y-6 p-4 sm:p-6">

@@ -62,7 +62,7 @@ export async function createArticuloAction(
 
   try {
     const data = await createArticulo(parsed.data);
-    revalidatePath("/dashboard/articulos");
+    revalidatePath("/articulos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al crear el artículo" };
@@ -80,7 +80,7 @@ export async function updateArticuloAction(
 
   try {
     const data = await updateArticulo(id, parsed.data);
-    revalidatePath("/dashboard/articulos");
+    revalidatePath("/articulos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al actualizar el artículo" };
@@ -92,7 +92,7 @@ export async function deleteArticuloAction(
 ): Promise<{ data: Articulo } | { error: string }> {
   try {
     const data = await deleteArticulo(id);
-    revalidatePath("/dashboard/articulos");
+    revalidatePath("/articulos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al desactivar el artículo" };
@@ -104,7 +104,7 @@ export async function reactivateArticuloAction(
 ): Promise<{ data: Articulo } | { error: string }> {
   try {
     const data = await reactivateArticulo(id);
-    revalidatePath("/dashboard/articulos");
+    revalidatePath("/articulos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al reactivar el artículo" };
@@ -131,7 +131,7 @@ export async function registerPurchaseAction(
       ...parsed.data,
       registradaPorId: session.user.id,
     });
-    revalidatePath("/dashboard/articulos");
+    revalidatePath("/articulos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al registrar la compra" };

@@ -95,7 +95,7 @@ export async function createPedidoAction(
       ...parsed.data,
       creadoPorId: session.user.id,
     } as CreatePedidoInput);
-    revalidatePath("/dashboard/pedidos");
+    revalidatePath("/pedidos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al crear el pedido" };
@@ -121,7 +121,7 @@ export async function updateEstadoAction(
       ...parsed.data,
       cambiadoPorId: session.user.id,
     } as UpdateEstadoInput);
-    revalidatePath("/dashboard/pedidos");
+    revalidatePath("/pedidos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al actualizar el estado" };
@@ -144,7 +144,7 @@ export async function cancelarPedidoAction(
     }
 
     const data = await cancelarPedido(id, parsed.data.motivo, session.user.id);
-    revalidatePath("/dashboard/pedidos");
+    revalidatePath("/pedidos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al cancelar el pedido" };
@@ -171,7 +171,7 @@ export async function confirmarCobroAdminAction(
     }
 
     const data = await confirmarCobroAdmin(id);
-    revalidatePath("/dashboard/pedidos");
+    revalidatePath("/pedidos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al confirmar el cobro" };

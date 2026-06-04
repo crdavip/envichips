@@ -5,7 +5,7 @@ import { Package } from "lucide-react";
 import {
   getArticuloByIdAction,
   getHistorialArticuloAction,
-} from "@/app/dashboard/articulos/actions";
+} from "@/app/(dashboard)/articulos/actions";
 import { formatCOP } from "@/lib/format";
 
 // ─── Types ──────────────────────────────────────────
@@ -50,7 +50,7 @@ export default async function HistorialPage({ params }: Props) {
     <div className="space-y-6 p-4 sm:p-6">
       {/* ─── Back link ─── */}
       <Link
-        href="/dashboard/articulos"
+        href="/articulos"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         ← Volver a Artículos

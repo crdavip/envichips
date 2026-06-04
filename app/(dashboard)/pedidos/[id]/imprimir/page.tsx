@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getPedidoByIdAction } from "@/app/dashboard/pedidos/actions";
+import { getPedidoByIdAction } from "@/app/(dashboard)/pedidos/actions";
 import { formatCOP } from "@/lib/format";
 import type { PedidoData } from "@/components/pedidos/PedidoDetail";
 import "./print.css";
@@ -74,7 +74,7 @@ export default function ImprimirPage({ params }: Props) {
       <div className="space-y-6 p-4 sm:p-6">
         <div className="no-print">
           <Link
-            href="/dashboard/pedidos"
+            href="/pedidos"
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted"
           >
             <ArrowLeft className="size-4" />
@@ -106,7 +106,7 @@ export default function ImprimirPage({ params }: Props) {
       {/* Screen-only navigation */}
       <div className="no-print flex items-center justify-between">
         <Link
-          href={`/dashboard/pedidos/${pedido.id}`}
+          href={`/pedidos/${pedido.id}`}
           className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted"
         >
           <ArrowLeft className="size-4" />

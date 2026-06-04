@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import {
   Card,
@@ -29,11 +27,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const subReportNav = [
-  { title: "Ventas", href: "/dashboard/informes/ventas", icon: BarChart3, description: "Desglose de ventas por producto" },
-  { title: "Inventario", href: "/dashboard/informes/inventario", icon: ClipboardList, description: "Stock actual y valorización" },
-  { title: "Caja", href: "/dashboard/informes/caja", icon: Wallet, description: "Movimientos y saldo de caja" },
-  { title: "Ganancias", href: "/dashboard/informes/ganancias", icon: TrendingUp, description: "Ganancia bruta y neta" },
-  { title: "Domiciliarios", href: "/dashboard/informes/domiciliarios", icon: Bike, description: "Rendimiento por domiciliario" },
+  { title: "Ventas", href: "/informes/ventas", icon: BarChart3, description: "Desglose de ventas por producto" },
+  { title: "Inventario", href: "/informes/inventario", icon: ClipboardList, description: "Stock actual y valorización" },
+  { title: "Caja", href: "/informes/caja", icon: Wallet, description: "Movimientos y saldo de caja" },
+  { title: "Ganancias", href: "/informes/ganancias", icon: TrendingUp, description: "Ganancia bruta y neta" },
+  { title: "Domiciliarios", href: "/informes/domiciliarios", icon: Bike, description: "Rendimiento por domiciliario" },
 ];
 
 async function MetricCards() {
@@ -204,12 +202,6 @@ function MetricSkeletons({ count }: { count: number }) {
 }
 
 export default async function InformesPage() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}

@@ -41,7 +41,7 @@ export async function createMovimientoAction(
       fecha: parsed.data.fecha ? new Date(parsed.data.fecha) : undefined,
       registradoPorId: session.user.id,
     });
-    revalidatePath("/dashboard/informes/caja");
+    revalidatePath("/informes/caja");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al crear el movimiento" };
@@ -69,7 +69,7 @@ export async function deleteMovimientoAction(
     }
 
     const data = await softDeleteMovimiento(parsed.data.id, userId, parsed.data.motivo);
-    revalidatePath("/dashboard/informes/caja");
+    revalidatePath("/informes/caja");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al eliminar el movimiento" };

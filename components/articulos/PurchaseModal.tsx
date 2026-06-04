@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, Search } from "lucide-react";
 import type { Articulo, MetodoPago } from "@/lib/generated/prisma/client";
-import { registerPurchaseAction } from "@/app/dashboard/articulos/actions";
+import { registerPurchaseAction } from "@/app/(dashboard)/articulos/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

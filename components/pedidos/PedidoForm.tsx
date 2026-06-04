@@ -33,7 +33,7 @@ import {
   getDomiciliariosAction,
   getArticulosForPedidoAction,
   getDeudaWarningAction,
-} from "@/app/dashboard/pedidos/actions";
+} from "@/app/(dashboard)/pedidos/actions";
 import type { MetodoPago } from "@/lib/generated/prisma/client";
 
 // ─── Types ──────────────────────────────────────────────
@@ -190,7 +190,7 @@ export function PedidoForm() {
   // ── Wizard navigation ──
   const goTo = useCallback(
     (s: number) => {
-      router.push(`/dashboard/pedidos/create?step=${s}`);
+      router.push(`/pedidos/create?step=${s}`);
     },
     [router],
   );
@@ -389,7 +389,7 @@ export function PedidoForm() {
         return;
       }
 
-      router.push(`/dashboard/pedidos/${res.data.id}`);
+      router.push(`/pedidos/${res.data.id}`);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al crear el pedido",

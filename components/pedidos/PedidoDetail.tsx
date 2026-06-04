@@ -38,7 +38,7 @@ import {
   cancelarPedidoAction,
   confirmarCobroAdminAction,
   updateEstadoAction,
-} from "@/app/dashboard/pedidos/actions";
+} from "@/app/(dashboard)/pedidos/actions";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -374,7 +374,7 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
 
           {/* Imprimir */}
           <Link
-            href={`/dashboard/pedidos/${pedido.id}/imprimir`}
+            href={`/pedidos/${pedido.id}/imprimir`}
             className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium text-foreground transition-all hover:bg-muted"
           >
             <Printer className="size-3.5" />

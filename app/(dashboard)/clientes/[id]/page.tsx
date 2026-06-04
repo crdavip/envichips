@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getClienteByIdAction } from "@/app/dashboard/clientes/actions";
+import { getClienteByIdAction } from "@/app/(dashboard)/clientes/actions";
 import { ClienteDetail } from "@/components/clientes/ClienteDetail";
 import type { ClienteDetailData } from "@/components/clientes/ClienteDetail";
 

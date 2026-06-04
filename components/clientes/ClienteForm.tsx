@@ -5,7 +5,7 @@ import type { Cliente } from "@/lib/generated/prisma/client";
 import {
   createClienteAction,
   updateClienteAction,
-} from "@/app/dashboard/clientes/actions";
+} from "@/app/(dashboard)/clientes/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
