@@ -231,6 +231,42 @@ Esquemas de validación compartidos entre cliente y servidor para el módulo de 
 
 ---
 
+## 8. Factura e Impresión
+
+**File**: `app/dashboard/pedidos/[id]/imprimir/page.tsx`
+
+### Purpose
+Vista de impresión de facturas para pedidos, soportando impresoras térmicas (58mm y 80mm) y formato A4, con auto-trigger de impresión al cargar la página.
+
+### Acceptance Criteria
+- [ ] Al navegar a `/dashboard/pedidos/[id]/imprimir`, MUST mostrar una vista lista para imprimir con el layout de factura
+- [ ] La factura MUST incluir: encabezado de marca Envichips, número de pedido, fecha, información de cliente y domiciliario, tabla de ítems con descripción, cantidad y subtotal, sección de totales (subtotal, descuento, total), método de pago y observaciones
+- [ ] Al cargar la página, MUST disparar automáticamente `window.print()` para mostrar el cuadro de diálogo de impresión
+- [ ] El CSS de impresión MUST adaptar correctamente el layout para impresoras térmicas de 58mm de ancho (máximo 56mm de contenido) y 80mm de ancho (máximo 76mm de contenido)
+- [ ] El CSS de impresión MUST soportar formato A4 (210mm x 297mm) con márgenes apropiados
+- [ ] Todos los valores monetarios MUST mostrarse en formato COP sin decimales (ej: `$1.500.000`)
+- [ ] La tipografía MUST ser legible en impresoras térmicas (tamaño mínimo 8pt para contenido, 10pt para encabezados)
+- [ ] El ancho de columnas en la tabla de ítems MUST ajustarse para evitar corte de texto en impresoras térmicas
+
+### Technical Notes
+- Usar `getPedidoByIdAction` para obtener los datos del pedido (mismo que el detalle)
+- Implementar estilos de impresión usando `@media print` y consultas de ancho para diferenciar entre térmicas y A4
+- Considerar usar unidades absolutas (mm, pt) en lugar de px para mejor control en impresión
+- Para térmicas: ocultar elementos no esenciales, reducir espaciados, usar fuentes sans-serif
+- Para A4: mantener layout completo con márgenes estándar de impresión
+- El auto-trigger de window.print() MUST ejecutarse en `useEffect` con dependencia vacía para correr solo en mount
+- Si el navegador bloquea el pop-up, proporcionar instrucciones manuales para imprimir (Ctrl+P o Cmd+P)
+
+### Test Scenarios
+1. **Impresión en térmica 58mm**: navegar a ruta de impresión → cuadro de diálogo muestra vista previa ajustada a 58mm → imprimir en térmica 58mm muestra factura legible sin cortes
+2. **Impresión en térmica 80mm**: navegar a ruta de impresión → cuadro de diálogo muestra vista previa ajustada a 80mm → imprimir en térmica 80mm muestra factura completa con buen espaciado
+3. **Impresión en A4**: navegar a ruta de impresión → cuadro de diálogo muestra vista previa A4 → imprimir en A4 muestra factura con márgenes normales y buena presentación
+4. **Auto-trigger de impresión**: al llegar a la página, se muestra automáticamente el cuadro de diálogo de impresión del navegador
+5. **Datos correctos mostrados**: número de pedido, fecha, cliente, domiciliario, items, totales y método de pago coinciden con el detalle del pedido
+6. **Formato COP**: todos los montos mostrados sin decimales y con separador de miles (ej: `$1.500.000` no `$1500.00`)
+
+---
+
 ## Non-Functional Requirements
 
 - **Debounce**: búsqueda de productos en paso 2 MUST usar debounce de 300ms

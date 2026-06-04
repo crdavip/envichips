@@ -1,0 +1,447 @@
+/*
+ * print.css — Estilos de impresión para facturas de Envichips
+ *
+ * Importado en app/dashboard/pedidos/[id]/imprimir/page.tsx.
+ * Contiene únicamente estilos @media print para tres formatos
+ * soportados: térmica 58mm, térmica 80mm y A4.
+ *
+ * Los estilos en pantalla (screen) se manejan con Tailwind CSS
+ * directamente en page.tsx. Este archivo SOLO se activa al imprimir
+ * mediante window.print().
+ *
+ * ─── Jerarquía de estilos ───
+ * 1. @page — configuración base de página impresa
+ * 2. @media print — estilos base que aplican a TODOS los formatos
+ * 3. @media print + width — sobrescriben según el ancho del papel
+ */
+
+/* ─── Configuración base de página impresa ─── */
+@page {
+  margin: 0;
+  size: auto;
+}
+
+/* ─── Estilos base de impresión (aplican a todos los formatos) ─── */
+@media print {
+  /* ── Ocultar elementos de la interfaz ── */
+  /* Navegación, botones, enlaces de navegación, tarjetas con bordes */
+  .no-print,
+  nav,
+  header:not(.print-header),
+  footer,
+  button,
+  a[href]:not(.print-link),
+  [role="navigation"],
+  .sidebar,
+  .card {
+    display: none !important;
+  }
+
+  /* ── Reset completo del body ── */
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff !important;
+    color: #000;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 10pt;
+    line-height: 1.3;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Forzar tinta negra sobre blanco ── */
+  * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-color: #000 !important;
+  }
+
+  /* ── Contenedor principal de la factura ── */
+  .print-container {
+    display: block !important;
+    width: 100%;
+    max-width: 76mm;
+    margin: 0 auto;
+    padding: 2mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 8pt;
+    line-height: 1.3;
+    box-sizing: border-box;
+  }
+
+  /* ── Encabezado de marca ── */
+  .print-header {
+    text-align: center;
+    margin-bottom: 2mm;
+  }
+
+  .print-brand {
+    font-size: 12pt;
+    font-weight: bold;
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .print-brand-sub {
+    font-size: 8pt;
+    margin-top: 0.5mm;
+  }
+
+  /* ── Línea divisora ── */
+  .print-divider {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 2mm 0;
+    height: 0;
+  }
+
+  .print-divider-solid {
+    border: none;
+    border-top: 1px solid #000;
+    margin: 2mm 0;
+    height: 0;
+  }
+
+  /* ── Información del pedido (metadatos) ── */
+  .print-info {
+    margin-bottom: 2mm;
+  }
+
+  .print-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    padding: 0.3mm 0;
+    margin: 0;
+  }
+
+  .print-label {
+    font-weight: bold;
+  }
+
+  .print-value {
+    text-align: right;
+  }
+
+  /* ── Tabla de productos ── */
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2mm 0;
+  }
+
+  .print-table thead th {
+    font-weight: bold;
+    font-size: 8pt;
+    padding: 1mm 0;
+    text-align: left;
+    border-bottom: 1px solid #000;
+    border-top: 1px solid #000;
+  }
+
+  .print-table thead th:first-child {
+    text-align: center;
+    width: 14%;
+  }
+
+  .print-table thead th:nth-child(2) {
+    text-align: left;
+    width: 56%;
+  }
+
+  .print-table thead th:last-child {
+    text-align: right;
+    width: 30%;
+  }
+
+  .print-table tbody td {
+    font-size: 8pt;
+    padding: 0.5mm 0;
+    vertical-align: top;
+    border-bottom: none;
+  }
+
+  .print-table tbody td:first-child {
+    text-align: center;
+  }
+
+  .print-table tbody td:nth-child(2) {
+    text-align: left;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .print-table tbody td:last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ── Totales ── */
+  .print-totals {
+    margin: 2mm 0;
+  }
+
+  .print-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8pt;
+    padding: 0.5mm 0;
+  }
+
+  .print-total-row .print-label {
+    text-align: left;
+  }
+
+  .print-total-row .print-value {
+    text-align: right;
+    font-weight: bold;
+  }
+
+  .print-total-final {
+    font-size: 10pt;
+    font-weight: bold;
+  }
+
+  .print-total-final .print-value {
+    font-size: 10pt;
+  }
+
+  /* ── Método de pago ── */
+  .print-payment {
+    text-align: center;
+    font-size: 8pt;
+    margin: 1mm 0;
+  }
+
+  /* ── Observaciones ── */
+  .print-observations {
+    margin-top: 2mm;
+    padding-top: 1mm;
+    font-size: 7pt;
+    font-style: italic;
+  }
+
+  .print-observations strong {
+    font-style: normal;
+  }
+
+  /* ── Pie de factura ── */
+  .print-footer {
+    text-align: center;
+    font-size: 8pt;
+    margin-top: 3mm;
+    padding-top: 1mm;
+  }
+}
+
+/* =======================================================
+   FORMATO: Impresora térmica 58mm
+   ────────────────────────────────────────────────────
+   Ancho máximo de contenido: 56mm
+   Tipografía: monospace compacta, espaciado mínimo
+   ======================================================= */
+@media print and (max-width: 56mm) {
+  .print-container {
+    max-width: 56mm;
+    padding: 1mm 1.5mm;
+    font-size: 7pt;
+  }
+
+  .print-brand {
+    font-size: 9pt;
+    letter-spacing: 0.5pt;
+  }
+
+  .print-brand-sub {
+    font-size: 6pt;
+  }
+
+  .print-divider,
+  .print-divider-solid {
+    margin: 1mm 0;
+  }
+
+  .print-info-row {
+    font-size: 7pt;
+    padding: 0.2mm 0;
+  }
+
+  .print-table thead th {
+    font-size: 7pt;
+    padding: 0.5mm 0;
+  }
+
+  .print-table tbody td {
+    font-size: 6.5pt;
+    padding: 0.3mm 0;
+  }
+
+  .print-table tbody td:first-child {
+    width: 12%;
+  }
+
+  .print-table tbody td:nth-child(2) {
+    width: 58%;
+  }
+
+  .print-table tbody td:last-child {
+    width: 30%;
+  }
+
+  .print-total-row {
+    font-size: 7pt;
+    padding: 0.3mm 0;
+  }
+
+  .print-total-final {
+    font-size: 8pt;
+  }
+
+  .print-total-final .print-value {
+    font-size: 8pt;
+  }
+
+  .print-payment {
+    font-size: 7pt;
+  }
+
+  .print-footer {
+    font-size: 7pt;
+  }
+
+  .print-observations {
+    font-size: 6pt;
+  }
+}
+
+/* =======================================================
+   FORMATO: Impresora térmica 80mm
+   ────────────────────────────────────────────────────
+   Ancho de contenido entre 57mm y 76mm
+   Tipografía: monospace con espaciado cómodo
+   ======================================================= */
+@media print and (min-width: 57mm) and (max-width: 76mm) {
+  .print-container {
+    max-width: 76mm;
+    padding: 3mm;
+    font-size: 8.5pt;
+  }
+
+  .print-brand {
+    font-size: 13pt;
+  }
+
+  .print-divider,
+  .print-divider-solid {
+    margin: 2.5mm 0;
+  }
+
+  .print-info-row {
+    font-size: 8.5pt;
+  }
+
+  .print-table thead th {
+    font-size: 8.5pt;
+  }
+
+  .print-table tbody td {
+    font-size: 8pt;
+  }
+
+  .print-total-row {
+    font-size: 8.5pt;
+  }
+
+  .print-footer {
+    font-size: 8.5pt;
+  }
+}
+
+/* =======================================================
+   FORMATO: A4 (210mm × 297mm) y papeles más grandes
+   ────────────────────────────────────────────────────
+   Ancho de contenido desde 77mm en adelante
+   Tipografía: serif legible, márgenes estándar 15-20mm
+   ======================================================= */
+@media print and (min-width: 77mm) {
+  .print-container {
+    max-width: 170mm;
+    margin: 15mm auto;
+    padding: 0;
+    font-family: 'Times New Roman', Times, Georgia, serif;
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+
+  .print-brand {
+    font-size: 18pt;
+    letter-spacing: 2pt;
+  }
+
+  .print-brand-sub {
+    font-size: 11pt;
+  }
+
+  .print-divider,
+  .print-divider-solid {
+    margin: 4mm 0;
+  }
+
+  .print-info-row {
+    font-size: 10pt;
+    padding: 0.5mm 0;
+  }
+
+  .print-table thead th {
+    font-size: 9pt;
+    padding: 1.5mm 0;
+  }
+
+  .print-table tbody td {
+    font-size: 9pt;
+    padding: 1mm 0;
+  }
+
+  .print-table tbody td:first-child {
+    width: 10%;
+  }
+
+  .print-table tbody td:nth-child(2) {
+    width: 55%;
+  }
+
+  .print-table tbody td:last-child {
+    width: 35%;
+  }
+
+  .print-total-row {
+    font-size: 10pt;
+    padding: 0.8mm 0;
+  }
+
+  .print-total-final {
+    font-size: 12pt;
+  }
+
+  .print-total-final .print-value {
+    font-size: 12pt;
+  }
+
+  .print-payment {
+    font-size: 10pt;
+  }
+
+  .print-footer {
+    font-size: 10pt;
+    margin-top: 5mm;
+  }
+
+  .print-observations {
+    font-size: 9pt;
+  }
+}
