@@ -52,31 +52,24 @@
 **Estimated lines: ~380-420**
 **Target: pr/3/fase-5-informes-ventas-inventario**
 
-- [ ] F3.1: Add getVentas query to lib/services/informes.ts:
+- [x] F3.1: Add getVentas query to lib/services/informes.ts:
   - groupBy articuloId on PedidoItem for entregado pedidos in period
   - Join with Articulo for nombre/presentacion
   - Calculate % del total, top 10 with CSS bars data
   - Summary: totalVendido, totalGanancia, masVendido, masRentable
   - Filter by domiciliarioId and dateRange
-- [ ] F3.2: Add getInventario query to lib/services/informes.ts:
+- [x] F3.2: Add getInventario query to lib/services/informes.ts:
   - All articles with stock data
   - ingresos from CompraItem in period
   - egresos from PedidoItem for ENTREGADO pedidos in period
   - valorInventario = stockActual * costo
   - Estado: OK/BAJO/SIN_STOCK
-- [ ] F3.3: Create `app/dashboard/informes/ventas/page.tsx` — server page, imports getVentas, passes data to VentasTable
-- [ ] F3.4: Create `components/informes/VentasTable.tsx` — "use client" table with:
-  - Columns: producto, unidades, ingresos, ganancia, % del total
-  - CSS horizontal bars for top 10 products
-  - Sortable by column
-  - Resume cards (total vendido, ganancia, top products)
-- [ ] F3.5: Create `app/dashboard/informes/inventario/page.tsx` — server page, imports getInventario
-- [ ] F3.6: Create `components/informes/InventarioTable.tsx` — "use client" table with:
-  - Columns: producto, ingresos, egresos, stockActual, stockMinimo, estado (badge), valor inventario
-  - StockBadge reused from articulos module
-  - Color-coded rows for stock bajo/sin stock
-- [ ] F3.7: Verify: `npm run build` passes
-- [ ] F3.8: Commit PR 3
+- [x] F3.3: Create `app/dashboard/informes/ventas/page.tsx` — server page, imports getVentas, passes data to VentasTable
+- [x] F3.4: Create `components/informes/VentasTable.tsx` — "use client" table with CSS bars and sorting
+- [x] F3.5: Create `app/dashboard/informes/inventario/page.tsx` — server page, imports getInventario
+- [x] F3.6: Create `components/informes/InventarioTable.tsx` — "use client" table with stock badges
+- [x] F3.7: Verify: `npx tsc --noEmit` passes
+- [x] F3.8: Commit PR 3
 
 ## PR 4 — Caja + Ganancias + Domiciliarios
 

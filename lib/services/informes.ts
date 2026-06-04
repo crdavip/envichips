@@ -233,6 +233,127 @@ export async function getVentas(
   };
 }
 
+// ─── GANANCIAS ───────────────────────────────────────────
+
+export interface ResumenGanancias {
+  gananciaBruta: number;
+  costoVentas: number;
+  gastosOperativos: number;
+  gananciaNeta: number;
+}
+
+export async function getGanancias(
+  dateRange: DateRange = "today",
+  customDesde?: Date,
+  customHasta?: Date,
+): Promise<ResumenGanancias> {
+  const { desde, hasta } = getDateRange(dateRange, customDesde, customHasta);
+
+  const pedidosEntregados = await db.pedido.findMany({
+    where: { estado: "ENTREGADO", fecha: { gte: desde, lte: hasta } },
+    select: { id: true },
+  });
+  const pedidoIds = pedidosEntregados.map((p) => p.id);
+
+  let gananciaBruta = 0;
+  let costoVentas = 0;
+  if (pedidoIds.length > 0) {
+    const itemsAgg = await db.pedidoItem.aggregate({
+      where: { pedidoId: { in: pedidoIds } },
+      _sum: { ganancia: true, costo: true },
+    });
+    gananciaBruta = itemsAgg._sum.ganancia ?? 0;
+    costoVentas = itemsAgg._sum.costo ?? 0;
+  }
+
+  const gastosAgg = await db.movimiento.aggregate({
+    where: { tipo: "GASTO", eliminado: false, fecha: { gte: desde, lte: hasta } },
+    _sum: { monto: true },
+  });
+  const gastosOperativos = gastosAgg._sum.monto ?? 0;
+
+  return {
+    gananciaBruta,
+    costoVentas,
+    gastosOperativos,
+    gananciaNeta: gananciaBruta - gastosOperativos,
+  };
+}
+
+// ─── DOMICILIARIOS ────────────────────────────────────────
+
+export interface DomiciliarioRow {
+  userId: string;
+  nombre: string;
+  pedidosEntregados: number;
+  totalVendido: number;
+  efectivoRecolectado: number;
+  transferencias: number;
+  pedidosCancelados: number;
+}
+
+export async function getDomiciliarios(
+  dateRange: DateRange = "today",
+  customDesde?: Date,
+  customHasta?: Date,
+): Promise<DomiciliarioRow[]> {
+  const { desde, hasta } = getDateRange(dateRange, customDesde, customHasta);
+
+  const domiciliarios = await db.user.findMany({
+    where: { rol: "DOMICILIARIO", activo: true },
+    select: { id: true, nombre: true },
+  });
+
+  const pedidos = await db.pedido.findMany({
+    where: {
+      domiciliarioId: { not: null },
+      fecha: { gte: desde, lte: hasta },
+    },
+    select: {
+      domiciliarioId: true,
+      estado: true,
+      total: true,
+      montoCobrado: true,
+      metodoPago: true,
+    },
+  });
+
+  const map = new Map<string, DomiciliarioRow>();
+  for (const d of domiciliarios) {
+    map.set(d.id, {
+      userId: d.id,
+      nombre: d.nombre,
+      pedidosEntregados: 0,
+      totalVendido: 0,
+      efectivoRecolectado: 0,
+      transferencias: 0,
+      pedidosCancelados: 0,
+    });
+  }
+
+  for (const p of pedidos) {
+    const row = map.get(p.domiciliarioId!);
+    if (!row) continue;
+    if (p.estado === "ENTREGADO") {
+      row.pedidosEntregados++;
+      row.totalVendido += p.total;
+      if (p.metodoPago === "EFECTIVO" && p.montoCobrado) {
+        row.efectivoRecolectado += p.montoCobrado;
+      }
+      if (p.metodoPago === "TRANSFERENCIA" && p.montoCobrado) {
+        row.transferencias += p.montoCobrado;
+      }
+    }
+    if (p.estado === "CANCELADO") {
+      row.pedidosCancelados++;
+    }
+  }
+
+  return Array.from(map.values()).filter(
+    (r) => r.pedidosEntregados > 0 || r.pedidosCancelados > 0,
+  );
+}
+
 // ─── INVENTARIO ─────────────────────────────────────────
 
 export interface InventarioRow {
