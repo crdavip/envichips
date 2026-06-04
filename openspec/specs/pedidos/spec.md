@@ -17,7 +17,7 @@ Asistente de 3 pasos para crear pedidos de domicilio. Optimizado para mobile (un
 - [ ] **Paso 1 — Cliente**: MUST mostrar buscador de clientes existentes + opción "Venta rápida" con campo de texto para nombre libre
 - [ ] **Paso 2 — Productos**: MUST incluir buscador de artículos con debounce (300ms), selector de cantidad con teclado numérico nativo, y subtotal por ítem actualizado en tiempo real
 - [ ] **Paso 3 — Resumen**: MUST mostrar lista de items con subtotales, campo de descuento (opcional), selector de método de pago (EFECTIVO/TRANSFERENCIA/FIADO), selector de domiciliario (opcional para venta directa), campo de observaciones y total general
-- [ ] Si `metodoPago = FIADO`, MUST mostrar la deuda actual del cliente como advertencia
+- [ ] Si `metodoPago = FIADO`, MUST mostrar la deuda actual del cliente como advertencia calculada en tiempo real mediante agregación (pedidos FIADO - abonos) utilizando el servicio de clientes
 - [ ] Si no se asigna `domiciliarioId` (venta directa), MUST crear el pedido directamente en estado `ENTREGADO`
 - [ ] Si se asigna `domiciliarioId`, MUST crear el pedido en estado `PENDIENTE`
 - [ ] MUST calcular `subtotal = Σ(cantidad × precio)`, `total = subtotal - descuento`
@@ -37,7 +37,11 @@ Asistente de 3 pasos para crear pedidos de domicilio. Optimizado para mobile (un
 ### Test Scenarios
 1. **Pedido completo**: seleccionar cliente, agregar 3 productos, confirmar → pedido creado en PENDIENTE con domiciliario asignado
 2. **Venta directa**: seleccionar cliente, productos, sin domiciliario → pedido creado en ENTREGADO
-3. **FIADO con advertencia**: seleccionar cliente con deuda, metodoPago FIADO → mostrar advertencia de deuda actual
+3. **FIADO con advertencia (deuda media)**: seleccionar cliente con deuda de $75.000, metodoPago FIADO → mostrar "Deuda actual: $75.000" en fondo amarillo (visible pero no bloqueante)
+4. **FIADO con advertencia (deuda alta)**: seleccionar cliente con deuda de $150.000, metodoPago FIADO → mostrar "Deuda actual: $150.000" en fondo rojo
+5. **FIADO sin deuda**: seleccionar cliente con deuda de $0, metodoPago FIADO → mostrar "Sin deuda" en fondo verde
+6. **Venta rápida con FIADO**: venta rápida sin cliente, metodoPago FIADO → sin advertencia de deuda, permitir continuar
+7. **Actualización en tiempo real**: cambiar cliente en paso 1 → advertencia de deuda se actualiza automáticamente sin recargar
 4. **Volver sin perder datos**: paso 2 → volver a paso 1 → avanzar otra vez → datos del paso 1 preservados
 5. **Validación sin items**: intentar confirmar sin productos → error "Debe incluir al menos un producto"
 6. **Venta rápida**: escribir nombre en "Venta rápida", agregar items, confirmar → pedido creado sin cliente asociado
@@ -129,7 +133,7 @@ Transiciones de estado del pedido con validación de reglas de negocio, descuent
 - [ ] Al pasar a `ENTREGADO`, MUST:
   - Solicitar `dineroCobrado` (boolean: si recibió efectivo) y `montoCobrado` (int COP: monto real recibido)
   - Descontar stock de cada artículo: `stockActual -= cantidad` en transacción atómica
-  - Si `metodoPago = FIADO`, MUST incrementar `cliente.deuda += total`
+  - Si `metodoPago = FIADO`, MUST utilizar el servicio de clientes para registrar el pedido de manera que la deuda se calcule dinámicamente mediante agregación (pedidos FIADO - abonos) en lugar de modificar directamente un campo `cliente.deuda`
   - Crear registro en `HistorialEstado`
 - [ ] Al cancelar un pedido que estaba `EN_CAMINO`, MUST revertir el stock (si ya se había descontado — en realidad no se descuenta hasta ENTREGADO, así que no hay nada que revertir para EN_CAMINO)
 - [ ] Al cancelar desde `PENDIENTE`, MUST solo crear registro en `HistorialEstado` (sin cambios de stock)
@@ -148,7 +152,9 @@ Transiciones de estado del pedido con validación de reglas de negocio, descuent
 2. **En Camino → Entregado con cobro**: marcar entregado con dineroCobrado=true, monto=50000 → stock descontado, historial creado
 3. **Cancelar desde Pendiente**: cancelar con motivo → estado CANCELADO, historial con motivo
 4. **Transición inválida**: intentar pasar de PENDIENTE a ENTREGADO directamente → error
-5. **FIADO actualiza deuda**: pedido con metodoPago FIADO al entregar → deuda del cliente incrementada
+5. **FIADO crea pedido y deuda se calcula**: pedido FIADO de $30.000 con cliente con deuda de $50.000 → deuda consultada retorna $80.000, sin campo `cliente.deuda` modificado directamente
+6. **FIADO con abono**: pedido FIADO de $25.000 con cliente con 1 pedido FIADO de $100.000 y 1 abono de $40.000 → deuda consultada retorna $85.000
+7. **FIADO CANCELADO no afecta deuda**: pedido FIADO de $30.000 cancelado → deuda del cliente sigue siendo $50.000
 
 ---
 
@@ -264,6 +270,21 @@ Vista de impresión de facturas para pedidos, soportando impresoras térmicas (5
 4. **Auto-trigger de impresión**: al llegar a la página, se muestra automáticamente el cuadro de diálogo de impresión del navegador
 5. **Datos correctos mostrados**: número de pedido, fecha, cliente, domiciliario, items, totales y método de pago coinciden con el detalle del pedido
 6. **Formato COP**: todos los montos mostrados sin decimales y con separador de miles (ej: `$1.500.000` no `$1500.00`)
+
+---
+
+## 9. Uso de Servicio de Clientes para Cálculo de Deuda
+
+### Purpose
+El sistema de pedidos MUST delegar el cálculo de deuda al servicio de clientes en lugar de mantener lógica de cálculo duplicada. Esto asegura consistencia entre módulos y permite reutilizar la misma lógica de cálculo en todo el sistema.
+
+### Acceptance Criteria
+- [ ] El módulo de pedidos MUST consultar la deuda del cliente usando `getDeudaCliente()` del servicio de clientes
+- [ ] El módulo de pedidos NO MUST mantener lógica propia de cálculo de deuda
+- [ ] La función de cálculo de deuda MUST ser la misma utilizada por el módulo de clientes
+
+### Test Scenarios
+1. **Consistencia entre módulos**: consultar deuda desde pedidos y desde clientes → ambos retornos idénticos usando la misma función subyacente
 
 ---
 
