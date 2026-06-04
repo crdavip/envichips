@@ -238,6 +238,10 @@ model Movimiento {
   monto           Int                // COP
   descripcion     String
   metodoPago      MetodoPago
-  registradoPorId String
-  creadoEn        DateTime           @default(now())
+  registradoPorId  String
+  creadoEn         DateTime           @default(now())
+  eliminado        Boolean            @default(false)
+  eliminadoEn      DateTime?
+  eliminadoPorId   String?
+  motivoEliminacion String?
 }
