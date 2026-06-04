@@ -92,8 +92,7 @@ model Cliente {
   direccion      String?
   tipoDoc        TipoDoc?
   numeroDoc      String?
-  estado         String   @default("AL_DIA") // AL_DIA | EN_DEUDA
-  deuda          Int      @default(0) // calculado, COP
+  estado         String   @default("AL_DIA") // AL_DIA | EN_DEUDA (actualizado en tiempo real)
   limiteCredito  Int?     // COP
   activo         Boolean  @default(true)
   notas          String?
