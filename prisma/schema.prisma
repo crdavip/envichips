@@ -34,7 +34,8 @@ model User {
   creados         User[]   @relation("UserCreador")
   pedidosCreados   Pedido[]          @relation("PedidoCreador")
   pedidosAsignados Pedido[]          @relation("PedidoDomiciliario")
-  cambiosEstado    HistorialEstado[]
+  cambiosEstado                HistorialEstado[]
+  configuracionesActualizadas  BusinessConfig[]
 }
 
 // ─── ARTÍCULOS ──────────────────────────────────────────
@@ -244,4 +245,15 @@ model Movimiento {
   eliminadoEn      DateTime?
   eliminadoPorId   String?
   motivoEliminacion String?
+}
+
+// ─── CONFIGURACIÓN DEL NEGOCIO ─────────────────────
+
+model BusinessConfig {
+  id               String   @id @default(uuid())
+  nombreNegocio    String
+  telefonoFactura  String?
+  actualizadoEn    DateTime @default(now()) @updatedAt
+  actualizadoPorId String
+  actualizadoPor   User     @relation(fields: [actualizadoPorId], references: [id])
 }
