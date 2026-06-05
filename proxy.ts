@@ -11,7 +11,7 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Protected routes: redirect to login if not authenticated
-  if (pathname.startsWith("/dashboard")) {
+  if (pathname !== "/login") {
     if (!token) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
@@ -20,9 +20,9 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Login page: redirect to dashboard if already authenticated
+  // Login page: redirect to / if already authenticated
   if (pathname === "/login" && token) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();
