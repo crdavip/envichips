@@ -9,6 +9,7 @@ import {
   Users,
   BarChart3,
   Shield,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const links = [
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/usuarios", label: "Usuarios", icon: Shield },
   { href: "/informes", label: "Informes", icon: BarChart3 },
+  { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
 export type NavLinksProps = {
