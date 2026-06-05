@@ -1,12 +1,21 @@
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getGanancias } from "@/lib/services/informes";
+import { getGanancias, type DateRange } from "@/lib/services/informes";
 import { GananciasCards } from "@/components/informes/GananciasCards";
+import { DateRangeFilter } from "@/components/ganancias/DateRangeFilter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-async function GananciasContent() {
+async function GananciasContent({
+  rango,
+  desde,
+  hasta,
+}: {
+  rango: string;
+  desde?: string;
+  hasta?: string;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -21,7 +30,18 @@ async function GananciasContent() {
     );
   }
 
-  const resumen = await getGanancias();
+  let customDesde: Date | undefined;
+  let customHasta: Date | undefined;
+  if (rango === "custom" && desde && hasta) {
+    customDesde = new Date(`${desde}T00:00:00-05:00`);
+    customHasta = new Date(`${hasta}T23:59:59-05:00`);
+  }
+
+  const resumen = await getGanancias(
+    rango as DateRange,
+    customDesde,
+    customHasta,
+  );
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -31,9 +51,63 @@ async function GananciasContent() {
           Ganancia bruta, costos, gastos operativos y ganancia neta
         </p>
       </div>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <DateRangeFilter />
+        <PeriodIndicator rango={rango} desde={desde} hasta={hasta} />
+      </div>
+
       <GananciasCards resumen={resumen} />
     </div>
   );
+}
+
+function PeriodIndicator({
+  rango,
+  desde,
+  hasta,
+}: {
+  rango: string;
+  desde?: string;
+  hasta?: string;
+}) {
+  const now = new Date();
+
+  if (rango === "today") {
+    return (
+      <span className="text-sm text-muted-foreground">
+        Hoy{" "}
+        {now.toLocaleDateString("es-CO", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+      </span>
+    );
+  }
+
+  if (rango === "week") {
+    return <span className="text-sm text-muted-foreground">Esta semana</span>;
+  }
+
+  if (rango === "month") {
+    return (
+      <span className="text-sm text-muted-foreground">
+        Este mes —{" "}
+        {now.toLocaleDateString("es-CO", { month: "long", year: "numeric" })}
+      </span>
+    );
+  }
+
+  if (rango === "custom" && desde && hasta) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        {desde} → {hasta}
+      </span>
+    );
+  }
+
+  return null;
 }
 
 function GananciasSkeleton() {
@@ -59,10 +133,17 @@ function GananciasSkeleton() {
   );
 }
 
-export default function GananciasPage() {
+export default async function GananciasPage(props: {
+  searchParams: Promise<{ rango?: string; desde?: string; hasta?: string }>;
+}) {
+  const sp = await props.searchParams;
   return (
     <Suspense fallback={<GananciasSkeleton />}>
-      <GananciasContent />
+      <GananciasContent
+        rango={sp.rango ?? "today"}
+        desde={sp.desde}
+        hasta={sp.hasta}
+      />
     </Suspense>
   );
 }
