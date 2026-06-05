@@ -254,6 +254,6 @@ model BusinessConfig {
   nombreNegocio    String
   telefonoFactura  String?
   actualizadoEn    DateTime @default(now()) @updatedAt
-  actualizadoPorId String
-  actualizadoPor   User     @relation(fields: [actualizadoPorId], references: [id])
+  actualizadoPorId String?
+  actualizadoPor   User?    @relation(fields: [actualizadoPorId], references: [id])
 }

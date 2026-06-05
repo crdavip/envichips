@@ -5,7 +5,7 @@ export interface BusinessConfigData {
   nombreNegocio: string;
   telefonoFactura: string | null;
   actualizadoEn: Date;
-  actualizadoPorId: string;
+  actualizadoPorId: string | null;
 }
 
 export async function getConfig(): Promise<BusinessConfigData> {
@@ -14,7 +14,6 @@ export async function getConfig(): Promise<BusinessConfigData> {
     config = await db.businessConfig.create({
       data: {
         nombreNegocio: "Mi Negocio",
-        actualizadoPorId: "", // will be set by first real user
       },
     });
   }
