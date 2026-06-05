@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Users,
   BarChart3,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ const links = [
   { href: "/articulos", label: "Artículos", icon: Package },
   { href: "/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/clientes", label: "Clientes", icon: Users },
+  { href: "/usuarios", label: "Usuarios", icon: Shield },
   { href: "/informes", label: "Informes", icon: BarChart3 },
 ];
 
