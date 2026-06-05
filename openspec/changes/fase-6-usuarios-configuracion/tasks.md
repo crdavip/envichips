@@ -86,21 +86,21 @@
 ## PR 3: Configuración Global del Negocio
 
 ### F6.11: Migración Prisma — BusinessConfig
-- [ ] Agregar modelo `BusinessConfig` a `prisma/schema.prisma` (ver design.md)
-- [ ] Ejecutar `npx prisma migrate dev --name add_business_config`
+- [x] Agregar modelo `BusinessConfig` a `prisma/schema.prisma` (ver design.md)
+- [x] Ejecutar `npx prisma migrate dev --name add_business_config`
 
 ### F6.12: Servicio de configuración
-- [ ] Crear `lib/services/configuracion.ts`
+- [x] Crear `lib/services/configuracion.ts`
   - `getConfig()`: findFirst, crear defaults si no existe
   - `upsertConfig(data, userId)`: crear o actualizar
 
 ### F6.13: Validaciones Zod
-- [ ] Crear `lib/validations/configuracion.ts`
+- [x] Crear `lib/validations/configuracion.ts`
   - Schema: nombreNegocio (requerido), telefonoFactura (opcional)
   - Tipo inferido
 
 ### F6.14: Página de configuración
-- [ ] Crear `app/(dashboard)/configuracion/page.tsx`
+- [x] Crear `app/(dashboard)/configuracion/page.tsx`
   - Formulario con nombreNegocio y telefonoFactura
   - Precargado con datos existentes
   - Submit → server action → mostrar éxito
@@ -108,6 +108,6 @@
   - Loading skeleton con Suspense
 
 ### F6.15: Nav / Sidebar
-- [ ] Agregar link "Configuración" a `components/layout/nav-links.tsx`
+- [x] Agregar link "Configuración" a `components/layout/nav-links.tsx`
   - Icono: `Settings` (lucide)
   - Ruta: `/configuracion`
