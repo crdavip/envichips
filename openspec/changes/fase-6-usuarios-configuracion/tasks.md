@@ -65,19 +65,19 @@
 ## PR 2: Ganancias Netas con Date Range
 
 ### F6.8: Extender servicio de ganancias
-- [ ] Modificar `getGanancias()` en `lib/services/informes.ts`
+- [x] Modificar `getGanancias()` en `lib/services/informes.ts`
   - Agregar parámetros: `dateRange`, `customDesde`, `customHasta`
   - Reutilizar `getDateRange()` existente
 
 ### F6.9: Componente DateRangeFilter
-- [ ] Crear `components/ganancias/DateRangeFilter.tsx`
+- [x] Crear `components/ganancias/DateRangeFilter.tsx`
   - Selector: Hoy | Esta semana | Este mes | Personalizado
   - Modo personalizado: inputs fecha Desde / Hasta
-  - Navegar via search params (`?range=today&desde=&hasta=`)
+  - Navegar via search params (`?rango=today&desde=&hasta=`)
   - Mantener consistencia visual con el resto del proyecto
 
 ### F6.10: Actualizar página de ganancias
-- [ ] Modificar `app/(dashboard)/informes/ganancias/page.tsx`
+- [x] Modificar `app/(dashboard)/informes/ganancias/page.tsx`
   - Leer search params para rango actual
   - Pasar rango a `getGanancias()`
   - Mostrar `DateRangeFilter` arriba de las cards
