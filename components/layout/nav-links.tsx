@@ -49,7 +49,7 @@ export function NavLinks({
         "flex",
         orientation === "vertical"
           ? "flex-col gap-1"
-          : "flex-row items-center justify-around",
+          : "flex-row items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden px-2",
       )}
     >
       {links.map((link) => {
@@ -63,7 +63,7 @@ export function NavLinks({
             onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
-              orientation === "horizontal" && "flex-col gap-1 px-2 py-1 text-xs",
+              orientation === "horizontal" && "shrink-0 flex-col gap-1 px-2 py-1 text-xs",
               isCollapsed &&
                 orientation === "vertical" &&
                 "gap-0 px-0 justify-center",
