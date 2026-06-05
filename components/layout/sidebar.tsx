@@ -1,15 +1,14 @@
 "use client";
 
-import { signOut } from "next-auth/react";
-import { LogOut, ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
 import { NavLinks } from "@/components/layout/nav-links";
+import { UserMenu } from "@/components/layout/user-menu";
 import { IsoType } from "../logo/isotype";
 import { LogoType } from "../logo/logotype";
 import { useSidebar } from "./sidebar-context";
 import { cn } from "@/lib/utils";
 
-export function Sidebar({ userName }: { userName: string }) {
+export function Sidebar({ userName, userEmail }: { userName: string; userEmail: string }) {
   const { isCollapsed, toggle } = useSidebar();
 
   return (
@@ -52,7 +51,7 @@ export function Sidebar({ userName }: { userName: string }) {
         <NavLinks orientation="vertical" isCollapsed={isCollapsed} />
       </div>
 
-      {/* Bottom: user + logout */}
+      {/* Bottom: user menu dropdown */}
       <div
         className={cn(
           "border-t py-3",
@@ -61,22 +60,11 @@ export function Sidebar({ userName }: { userName: string }) {
             : "px-4",
         )}
       >
-        {!isCollapsed && (
-          <p className="mb-2 truncate text-sm font-medium text-foreground">
-            {userName}
-          </p>
-        )}
-
-        <Button
-          variant="outline"
-          size={isCollapsed ? "icon-sm" : "sm"}
-          className={cn("cursor-pointer", isCollapsed ? "size-7" : "w-full justify-start gap-2")}
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          title={isCollapsed ? "Cerrar sesión" : undefined}
-        >
-          <LogOut className="size-4" />
-          {!isCollapsed && "Cerrar sesión"}
-        </Button>
+        <UserMenu
+          position={isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"}
+          userName={userName}
+          userEmail={userEmail}
+        />
       </div>
     </aside>
   );
