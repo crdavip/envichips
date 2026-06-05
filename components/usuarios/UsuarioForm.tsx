@@ -260,7 +260,7 @@ export function UsuarioForm({
             ? "Guardando…"
             : mode === "create"
               ? "Crear Usuario"
-              : "Guardar Cambios"}
+              : "Guardar"}
         </Button>
       </div>
     </form>

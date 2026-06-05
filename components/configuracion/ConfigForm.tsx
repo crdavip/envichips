@@ -126,7 +126,7 @@ export function ConfigForm({ initialData }: ConfigFormProps) {
       {/* ── Buttons ── */}
       <div className="flex items-center justify-end gap-2 pt-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Guardando…" : "Guardar Cambios"}
+          {isPending ? "Guardando…" : "Guardar"}
         </Button>
       </div>
     </form>

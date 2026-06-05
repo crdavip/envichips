@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil, Power, PowerOff } from "lucide-react";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import { StockBadge } from "@/components/articulos/StockBadge";
 import { cn } from "@/lib/utils";
@@ -43,11 +44,33 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
           </p>
         </div>
 
-        {!articulo.activo && (
-          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase">
-            Inactivo
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-0.5">
+          {!articulo.activo && (
+            <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase">
+              Inactivo
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onEdit(articulo); }}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            title="Editar artículo"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleActivo(articulo); }}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            title={articulo.activo ? "Desactivar artículo" : "Reactivar artículo"}
+          >
+            {articulo.activo ? (
+              <PowerOff className="size-3.5" />
+            ) : (
+              <Power className="size-3.5 text-emerald-500" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Info rows */}
@@ -63,22 +86,11 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
       </div>
 
       {/* Stock badge */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="pt-2">
         <StockBadge
           stockActual={articulo.stockActual}
           stockMinimo={articulo.stockMinimo}
         />
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleActivo(articulo);
-          }}
-          className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
-          type="button"
-        >
-          {articulo.activo ? "Desactivar" : "Activar"}
-        </button>
       </div>
     </div>
   );

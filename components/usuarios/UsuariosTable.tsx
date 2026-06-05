@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Plus, RefreshCw, ExternalLink, Shield } from "lucide-react";
+import { Users, Plus, RefreshCw, ExternalLink, Shield, Pencil, Power, PowerOff } from "lucide-react";
 import { toggleUsuarioAction } from "@/app/(dashboard)/usuarios/actions";
 import type { UsuarioListado } from "@/lib/services/usuarios";
 import { Button } from "@/components/ui/button";
@@ -151,9 +151,23 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
         </div>
       )}
 
+      {/* ─── Mobile cards ─── */}
+      {usuarios.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+          {usuarios.map((usuario) => (
+            <UsuarioCard
+              key={usuario.id}
+              usuario={usuario}
+              onToggle={handleToggle}
+              fetching={fetching}
+            />
+          ))}
+        </div>
+      )}
+
       {/* ─── Desktop table ─── */}
       {usuarios.length > 0 && (
-        <div className="rounded-lg border">
+        <div className="hidden lg:block rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -235,6 +249,69 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
 
 // ─── Loading Skeleton ──────────────────────────────
 
+// ─── UsuarioCard (mobile) ──────────────────────────
+
+function UsuarioCard({
+  usuario,
+  onToggle,
+  fetching,
+}: {
+  usuario: UsuarioListado;
+  onToggle: (id: string, nombre: string) => void;
+  fetching: boolean;
+}) {
+  return (
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">{usuario.nombre}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {usuario.email}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Link
+            href={`/usuarios/${usuario.id}`}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            title="Editar usuario"
+          >
+            <Pencil className="size-3.5" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => onToggle(usuario.id, usuario.nombre)}
+            disabled={fetching}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-50"
+            title={usuario.activo ? "Desactivar usuario" : "Activar usuario"}
+          >
+            {usuario.activo ? (
+              <PowerOff className="size-3.5" />
+            ) : (
+              <Power className="size-3.5 text-emerald-500" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <RolBadge rol={usuario.rol} />
+        <EstadoBadge activo={usuario.activo} />
+      </div>
+
+      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+        {usuario.telefono && <p>Tel: {usuario.telefono}</p>}
+        <p>Último acceso: {formatDate(usuario.ultimoAcceso)}</p>
+        {usuario.creadoPor?.nombre && (
+          <p>Creado por: {usuario.creadoPor.nombre}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Loading Skeleton ──────────────────────────────
+
 export function UsuariosTableSkeleton() {
   return (
     <div className="space-y-6">
@@ -242,9 +319,9 @@ export function UsuariosTableSkeleton() {
         <Skeleton className="h-7 w-32" />
         <Skeleton className="h-8 w-36" />
       </div>
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full rounded-md" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
       </div>
     </div>

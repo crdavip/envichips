@@ -12,7 +12,7 @@ import {
   Plus,
   RefreshCw,
   ExternalLink,
-  Edit,
+  PowerOff,
 } from "lucide-react";
 import type { Cliente } from "@/lib/generated/prisma/client";
 import {
@@ -529,7 +529,27 @@ function ClienteCard({
             </p>
           )}
         </div>
-        <DeudaBadge deuda={cliente.deuda} />
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Link
+            href={`/clientes/${cliente.id}`}
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            title="Ver cliente"
+          >
+            <ExternalLink className="size-3.5" />
+          </Link>
+          {canMutate && (
+            <button
+              type="button"
+              onClick={() => onDelete(cliente)}
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+              title="Desactivar cliente"
+            >
+              <PowerOff className="size-3.5" />
+            </button>
+          )}
+          <DeudaBadge deuda={cliente.deuda} />
+        </div>
       </div>
 
       <div className="mt-3 flex items-center justify-between border-t pt-3">
@@ -540,25 +560,6 @@ function ClienteCard({
         ) : (
           <span className="text-sm text-muted-foreground">$0</span>
         )}
-
-        <div className="flex gap-1">
-          <Link
-            href={`/clientes/${cliente.id}`}
-            className="inline-flex h-6 items-center gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs font-medium text-foreground transition-all hover:bg-muted"
-          >
-            <ExternalLink className="size-3" />
-            Ver
-          </Link>
-          {canMutate && (
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => onDelete(cliente)}
-            >
-              Desactivar
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   );

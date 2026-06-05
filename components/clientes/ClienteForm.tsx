@@ -264,7 +264,7 @@ export function ClienteForm({
             ? "Guardando…"
             : mode === "create"
               ? "Crear Cliente"
-              : "Guardar Cambios"}
+              : "Guardar"}
         </Button>
       </div>
     </form>

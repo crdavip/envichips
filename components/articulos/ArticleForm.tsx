@@ -310,7 +310,7 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
             Cancelar
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Guardando…" : mode === "create" ? "Crear Artículo" : "Guardar Cambios"}
+            {isPending ? "Guardando…" : mode === "create" ? "Crear Artículo" : "Guardar"}
           </Button>
         </div>
       </div>
