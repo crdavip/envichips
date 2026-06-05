@@ -44,7 +44,7 @@ const SelectPopup = React.forwardRef<
       <BaseSelect.Popup
         ref={ref}
         className={cn(
-          "relative min-w-[var(--anchor-width)] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
+          "relative min-w-[var(--anchor-width)] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95",
           className,
         )}
         {...props}
@@ -61,7 +61,7 @@ const SelectList = React.forwardRef<
   <BaseSelect.List
     ref={ref}
     className={cn(
-      "max-h-64 overflow-auto p-1",
+      "max-h-64 overflow-auto p-1.5",
       className,
     )}
     {...props}
@@ -76,7 +76,7 @@ const SelectItem = React.forwardRef<
   <BaseSelect.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default items-center rounded-md px-2 py-2 text-sm outline-none select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}

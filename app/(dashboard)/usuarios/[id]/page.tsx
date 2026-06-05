@@ -10,6 +10,7 @@ import { ToggleUsuarioButton } from "@/components/usuarios/ToggleUsuarioButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Users } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────
 
@@ -114,11 +115,16 @@ export default async function EditUsuarioPage({ params }: Props) {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Editar Usuario</h1>
-          <p className="text-sm text-muted-foreground">
-            Modificá los datos del usuario
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Users className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-semibold">Editar Usuario</h1>
+            <p className="text-sm text-muted-foreground">
+              Modificá los datos del usuario
+            </p>
+          </div>
         </div>
         <Link href="/usuarios">
           <Button variant="outline">Volver</Button>

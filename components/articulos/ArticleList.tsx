@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Package, Plus, RefreshCw, ShoppingCart } from "lucide-react";
+import { ArrowDown, ArrowUp, Package, Plus, RefreshCw } from "lucide-react";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import {
   deleteArticuloAction,
@@ -240,16 +240,6 @@ export function ArticleList() {
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button onClick={handleCreate} className="w-full sm:w-auto">
-            <Plus className="size-4" />
-            Nuevo Artículo
-          </Button>
-          <Button variant="outline" onClick={() => setPurchaseOpen(true)} className="w-full sm:w-auto">
-            <ShoppingCart className="size-4" />
-            + Compra
-          </Button>
-        </div>
       </div>
 
       {/* ─── Filters ─── */}
@@ -379,6 +369,18 @@ export function ArticleList() {
         onOpenChange={setPurchaseOpen}
         onSuccess={handlePurchaseSuccess}
       />
+
+      {/* ─── FAB: Nuevo Artículo ─── */}
+      <button
+        onClick={handleCreate}
+        className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
+        aria-label="Nuevo Artículo"
+      >
+        <Package className="size-6" />
+        <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
+          +
+        </span>
+      </button>
     </div>
   );
 }

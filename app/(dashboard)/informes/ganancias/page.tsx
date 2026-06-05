@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { TrendingUp } from "lucide-react";
 import { getGanancias, type DateRange } from "@/lib/services/informes";
 import { GananciasCards } from "@/components/informes/GananciasCards";
 import { DateRangeFilter } from "@/components/ganancias/DateRangeFilter";
@@ -45,11 +46,14 @@ async function GananciasContent({
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Ganancias</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Ganancia bruta, costos, gastos operativos y ganancia neta
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <TrendingUp className="size-5" />
+        </span>
+        <div>
+          <h1 className="text-xl font-semibold">Ganancias</h1>
+          <p className="text-sm text-muted-foreground">Ganancia bruta, costos, gastos operativos y ganancia neta</p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

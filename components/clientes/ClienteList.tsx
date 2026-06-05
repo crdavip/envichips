@@ -286,15 +286,6 @@ export function ClienteList({ userRole }: ClienteListProps) {
             </p>
           </div>
         </div>
-        {canMutate && (
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => setFormMode("create")}
-          >
-            <Plus className="size-4" />
-            Nuevo Cliente
-          </Button>
-        )}
       </div>
 
       {/* ─── Filters ─── */}
@@ -491,6 +482,20 @@ export function ClienteList({ userRole }: ClienteListProps) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* ─── FAB: Nuevo Cliente ─── */}
+      {canMutate && (
+        <button
+          onClick={() => setFormMode("create")}
+          className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
+          aria-label="Nuevo Cliente"
+        >
+          <Users className="size-6" />
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
+            +
+          </span>
+        </button>
+      )}
     </div>
   );
 }

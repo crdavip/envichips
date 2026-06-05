@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Settings } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Configuración | Envichips",
@@ -74,6 +75,9 @@ export default async function ConfiguracionPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Settings className="size-5" />
+        </span>
         <div>
           <h1 className="text-xl font-semibold">Configuración</h1>
           <p className="text-sm text-muted-foreground">

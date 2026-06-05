@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { UsuarioForm } from "@/components/usuarios/UsuarioForm";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserPlus } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Nuevo Usuario | Envichips",
@@ -58,6 +59,9 @@ export default async function NewUsuarioPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <UserPlus className="size-5" />
+        </span>
         <div>
           <h1 className="text-xl font-semibold">Nuevo Usuario</h1>
           <p className="text-sm text-muted-foreground">

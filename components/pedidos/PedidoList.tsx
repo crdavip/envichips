@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ShoppingCart, RefreshCw, Search, Plus } from "lucide-react";
+import { ShoppingCart, RefreshCw, Search } from "lucide-react";
 import {
   getPedidosAction,
 } from "@/app/(dashboard)/pedidos/actions";
@@ -202,13 +202,6 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
             </p>
           </div>
         </div>
-        <Link
-          href="/pedidos/create"
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
-        >
-          <Plus className="size-4" />
-          Nuevo Pedido
-        </Link>
       </div>
 
       {/* ─── Filters ─── */}
@@ -435,13 +428,16 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
         </Table>
       </div>
 
-      {/* ─── FAB: Nuevo Pedido (mobile) ─── */}
+      {/* ─── FAB: Nuevo Pedido ─── */}
       <Link
         href="/pedidos/create"
-        className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6"
+        className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
         aria-label="Nuevo Pedido"
       >
-        <Plus className="size-6" />
+        <ShoppingCart className="size-6" />
+        <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
+          +
+        </span>
       </Link>
     </div>
   );

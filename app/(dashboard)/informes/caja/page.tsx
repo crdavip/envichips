@@ -57,11 +57,14 @@ async function CajaContent() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Caja</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Movimientos y saldo de caja
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Wallet className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-semibold">Caja</h1>
+            <p className="text-sm text-muted-foreground">Movimientos y saldo de caja</p>
+          </div>
         </div>
         <CajaForm />
       </div>

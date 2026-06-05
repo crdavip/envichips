@@ -110,12 +110,6 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
             </p>
           </div>
         </div>
-        <Link href="/usuarios/new">
-          <Button className="w-full sm:w-auto">
-            <Plus className="size-4" />
-            Nuevo Usuario
-          </Button>
-        </Link>
       </div>
 
       {/* ─── Error banner ─── */}
@@ -223,6 +217,18 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
           </Table>
         </div>
       )}
+
+      {/* ─── FAB: Nuevo Usuario ─── */}
+      <Link
+        href="/usuarios/new"
+        className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
+        aria-label="Nuevo Usuario"
+      >
+        <Shield className="size-6" />
+        <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
+          +
+        </span>
+      </Link>
     </div>
   );
 }

@@ -205,16 +205,21 @@ export default async function InformesPage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Informes</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Resumen del negocio — {new Date().toLocaleDateString("es-AR", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <BarChart3 className="size-5" />
+        </span>
+        <div>
+          <h1 className="text-xl font-semibold">Informes</h1>
+          <p className="text-sm text-muted-foreground">
+            Resumen del negocio — {new Date().toLocaleDateString("es-AR", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
       </div>
 
       {/* Metric cards */}
