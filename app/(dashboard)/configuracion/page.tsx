@@ -1,0 +1,90 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getConfig } from "@/lib/services/configuracion";
+import { ConfigForm } from "@/components/configuracion/ConfigForm";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Configuración | Envichips",
+  description: "Configuración global del negocio",
+};
+
+// ─── Page content ─────────────────────────────────
+
+async function ConfiguracionContent() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const userRole = (session.user as { rol?: string }).rol;
+  if (userRole !== "SUPERADMIN") {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <p className="text-sm text-destructive">
+          No autorizado — solo SuperAdmin puede acceder a esta sección
+        </p>
+      </div>
+    );
+  }
+
+  const config = await getConfig();
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>Configuración del Negocio</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ConfigForm initialData={config} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ConfiguracionSkeleton() {
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <Skeleton className="h-5 w-48" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-32 ml-auto" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────
+
+export default async function ConfiguracionPage() {
+  return (
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="flex items-center gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Configuración</h1>
+          <p className="text-sm text-muted-foreground">
+            Administrá los datos globales del negocio
+          </p>
+        </div>
+      </div>
+
+      <Suspense fallback={<ConfiguracionSkeleton />}>
+        <ConfiguracionContent />
+      </Suspense>
+    </div>
+  );
+}
