@@ -24,7 +24,6 @@
 /* ─── Estilos base de impresión (aplican a todos los formatos) ─── */
 @media print {
   /* ── Ocultar elementos de la interfaz ── */
-  /* Navegación, botones, enlaces de navegación, tarjetas con bordes */
   .no-print,
   nav,
   header:not(.print-header),
@@ -56,7 +55,16 @@
     color: #000 !important;
     box-shadow: none !important;
     text-shadow: none !important;
-    border-color: #000 !important;
+  }
+
+  /* ── Sacar bordes de todo y ponerlos solo donde los necesitamos ── */
+  * {
+    border: none !important;
+  }
+  .print-table thead th {
+    border: none !important;
+    border-bottom: 1px solid #000 !important;
+    border-top: 1px solid #000 !important;
   }
 
   /* ── Contenedor principal de la factura ── */
@@ -72,49 +80,69 @@
     box-sizing: border-box;
   }
 
-  /* ── Encabezado de marca ── */
+  /* ── Encabezado de marca: vertical centrado ── */
   .print-header {
-    text-align: center;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     margin-bottom: 2mm;
   }
 
-  .print-logo {
-    margin-bottom: 1mm;
-    line-height: 0;
+  .print-header > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
   }
 
-  .print-logo-svg {
-    display: inline-block;
-    width: 50mm;
+  .print-header > div > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.5mm !important;
+  }
+
+  .print-isotype {
+    display: block !important;
+    width: 16mm;
     height: auto;
+  }
+
+  .print-logotype {
+    display: block !important;
+    height: 6mm;
+    width: auto;
     max-width: 100%;
   }
 
-  /* Preserve logo colors — override the * rule below */
-  .print-logo,
-  .print-logo * {
+  /* Ocultar badge y tagline */
+  .print-badge,
+  .print-tagline {
+    display: none !important;
+  }
+
+  /* Preservar colores del logo */
+  .print-isotype,
+  .print-isotype *,
+  .print-logotype,
+  .print-logotype * {
     color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     background: none !important;
   }
 
-  .print-brand-sub {
-    font-size: 8pt;
-    margin-top: 0.5mm;
-  }
-
-  /* ── Línea divisora ── */
   .print-divider {
-    border: none;
-    border-top: 1px dashed #000;
+    border: none !important;
+    border-top: 1px dashed #000 !important;
     margin: 2mm 0;
     height: 0;
   }
 
   .print-divider-solid {
-    border: none;
-    border-top: 1px solid #000;
+    border: none !important;
+    border-top: 1px solid #000 !important;
     margin: 2mm 0;
     height: 0;
   }
@@ -265,12 +293,13 @@
     font-size: 7pt;
   }
 
-  .print-logo-svg {
-    width: 38mm;
+  .print-isotype {
+    width: 12mm;
   }
 
-  .print-brand-sub {
-    font-size: 6pt;
+  .print-logotype {
+    height: 4.5mm;
+    width: auto;
   }
 
   .print-divider,
@@ -344,8 +373,13 @@
     font-size: 8.5pt;
   }
 
-  .print-logo-svg {
-    width: 58mm;
+  .print-isotype {
+    width: 18mm;
+  }
+
+  .print-logotype {
+    height: 7mm;
+    width: auto;
   }
 
   .print-divider,
@@ -369,6 +403,18 @@
     font-size: 8.5pt;
   }
 
+  .print-total-final {
+    font-size: 9pt;
+  }
+
+  .print-total-final .print-value {
+    font-size: 9pt;
+  }
+
+  .print-payment {
+    font-size: 8.5pt;
+  }
+
   .print-footer {
     font-size: 8.5pt;
   }
@@ -381,21 +427,27 @@
    Tipografía: serif legible, márgenes estándar 15-20mm
    ======================================================= */
 @media print and (min-width: 77mm) {
+  @page {
+    margin: 15mm 18mm;
+    size: A4 portrait;
+  }
+
   .print-container {
-    max-width: 170mm;
-    margin: 15mm auto;
+    max-width: 174mm;
+    margin: 0 auto;
     padding: 0;
     font-family: 'Times New Roman', Times, Georgia, serif;
     font-size: 10pt;
     line-height: 1.5;
   }
 
-  .print-logo-svg {
-    width: 100mm;
+  .print-isotype {
+    width: 24mm;
   }
 
-  .print-brand-sub {
-    font-size: 11pt;
+  .print-logotype {
+    height: 9mm;
+    width: auto;
   }
 
   .print-divider,
