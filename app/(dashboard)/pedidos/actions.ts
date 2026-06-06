@@ -61,7 +61,8 @@ export async function getPedidoByIdAction(
 export async function createPedidoAction(
   raw: Omit<CreatePedidoInput, "creadoPorId">,
 ): Promise<{ data: Awaited<ReturnType<typeof createPedido>> } | { error: string }> {
-  const parsed = createPedidoSchema.safeParse(raw);
+  // Parse WITHOUT creadoPorId — it's added after validation
+  const parsed = createPedidoSchema.omit({ creadoPorId: true }).safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
@@ -187,21 +188,22 @@ export async function getClientesAction(
   | { error: string }
 > {
   try {
-    if (query.length < 2) {
-      return { data: [] as { id: string; nombreCompleto: string; telefono: string | null; deuda: number }[] };
+    const where: { activo: boolean; nombreCompleto?: { contains: string; mode: "insensitive" } } = {
+      activo: true,
+    };
+
+    if (query.length >= 2) {
+      where.nombreCompleto = { contains: query, mode: "insensitive" };
     }
 
     const rawClientes = await db.cliente.findMany({
-      where: {
-        activo: true,
-        nombreCompleto: { contains: query, mode: "insensitive" },
-      },
+      where,
       select: {
         id: true,
         nombreCompleto: true,
         telefono: true,
       },
-      take: 10,
+      take: 20,
       orderBy: { nombreCompleto: "asc" },
     });
 
@@ -253,15 +255,16 @@ export async function getArticulosForPedidoAction(
   | { error: string }
 > {
   try {
-    if (query.length < 2) {
-      return { data: [] as { id: string; nombre: string; presentacion: string; precio: number; stockActual: number }[] };
+    const where: { activo: boolean; nombre?: { contains: string; mode: "insensitive" } } = {
+      activo: true,
+    };
+
+    if (query.length >= 2) {
+      where.nombre = { contains: query, mode: "insensitive" };
     }
 
     const articulos = await db.articulo.findMany({
-      where: {
-        activo: true,
-        nombre: { contains: query, mode: "insensitive" },
-      },
+      where,
       select: {
         id: true,
         nombre: true,
@@ -269,7 +272,7 @@ export async function getArticulosForPedidoAction(
         precio: true,
         stockActual: true,
       },
-      take: 15,
+      take: 20,
       orderBy: { nombre: "asc" },
     });
     return { data: articulos };

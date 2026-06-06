@@ -7,10 +7,15 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Loader2,
+  Minus,
+  Package,
   Plus,
   Search,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -125,61 +130,6 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-// ─── Search Results List (reusable) ─────────────────────
-
-interface SearchResultListProps<T> {
-  results: T[];
-  renderItem: (item: T) => React.ReactNode;
-  onSelect: (item: T) => void;
-  selectedId?: string;
-  loading: boolean;
-  emptyMessage: string;
-}
-
-function SearchResultList<T extends { id: string }>({
-  results,
-  renderItem,
-  onSelect,
-  selectedId,
-  loading,
-  emptyMessage,
-}: SearchResultListProps<T>) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-        <Loader2 className="mr-2 size-4 animate-spin" />
-        Buscando...
-      </div>
-    );
-  }
-
-  if (results.length === 0) {
-    return (
-      <p className="py-4 text-center text-sm text-muted-foreground">
-        {emptyMessage}
-      </p>
-    );
-  }
-
-  return (
-    <ul className="divide-y">
-      {results.map((item) => (
-        <li key={item.id}>
-          <button
-            type="button"
-            onClick={() => onSelect(item)}
-            className={`flex w-full items-start gap-3 px-3 py-3 text-left text-sm transition-colors hover:bg-accent ${
-              selectedId === item.id ? "bg-accent/60" : ""
-            }`}
-          >
-            {renderItem(item)}
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 // ─── PedidoForm Component ───────────────────────────────
 
 export function PedidoForm() {
@@ -217,19 +167,68 @@ export function PedidoForm() {
   // ── Derived totals ──
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
   const total = Math.max(0, subtotal - descuento);
+  const totalQty = items.reduce((sum, item) => sum + item.cantidad, 0);
 
-  // ── Step 1: Client search ──
+  // ── Cart collapsible ──
+  const [cartOpen, setCartOpen] = useState(true);
+
+  // ── Feedback: last added product for animation ──
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const lastAddedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // ══════════════════════════════════════════════════
+  // CART BUMP ANIMATION
+  // ══════════════════════════════════════════════════
+  const [cartBump, setCartBump] = useState(false);
+  // Trigger bump animation when total quantity changes
+  const prevQtyRef = useRef(0);
+  useEffect(() => {
+    if (totalQty > prevQtyRef.current) {
+      setCartBump(true);
+      const t = setTimeout(() => setCartBump(false), 400);
+      prevQtyRef.current = totalQty;
+      return () => clearTimeout(t);
+    }
+    prevQtyRef.current = totalQty;
+  }, [totalQty]);
+
+  // ── Step 1: Client search + browse ──
   const [clientQuery, setClientQuery] = useState("");
   const [clientResults, setClientResults] = useState<ClientResult[]>([]);
   const [clientLoading, setClientLoading] = useState(false);
+  const [clientInitialLoading, setClientInitialLoading] = useState(true);
   const clientDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
 
+  // Load initial clients on mount (browse mode)
   useEffect(() => {
+    let cancelled = false;
+    setClientInitialLoading(true);
+    getClientesAction("").then((res) => {
+      if (cancelled) return;
+      if ("data" in res) {
+        setClientResults(res.data);
+      }
+      setClientInitialLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Search clients as user types
+  useEffect(() => {
+    // When query is cleared, restore initial browse list
     if (clientQuery.length < 2) {
-      const id = setTimeout(() => setClientResults([]), 0);
-      return () => clearTimeout(id);
+      if (clientDebounceRef.current) clearTimeout(clientDebounceRef.current);
+      setClientLoading(true);
+      getClientesAction("").then((res) => {
+        if ("data" in res) {
+          setClientResults(res.data);
+        }
+        setClientLoading(false);
+      });
+      return;
     }
 
     if (clientDebounceRef.current) clearTimeout(clientDebounceRef.current);
@@ -246,22 +245,48 @@ export function PedidoForm() {
     return () => {
       if (clientDebounceRef.current) clearTimeout(clientDebounceRef.current);
     };
-  }, [clientQuery]);
+  }, [clientQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Step 2: Article search ──
+  // ── Step 2: Article search + browse ──
   const [articleQuery, setArticleQuery] = useState("");
   const [articleResults, setArticleResults] = useState<ArticleResult[]>([]);
   const [articleLoading, setArticleLoading] = useState(false);
+  const [articleInitialLoading, setArticleInitialLoading] = useState(true);
   const articleDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
   const [addingArticleId, setAddingArticleId] = useState<string | null>(null);
   const [addingQuantity, setAddingQuantity] = useState(1);
 
+  // Load initial articles on mount (browse mode)
   useEffect(() => {
+    let cancelled = false;
+    setArticleInitialLoading(true);
+    getArticulosForPedidoAction("").then((res) => {
+      if (cancelled) return;
+      if ("data" in res) {
+        setArticleResults(res.data);
+      }
+      setArticleInitialLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Search articles as user types
+  useEffect(() => {
+    // When query is cleared, restore initial browse list
     if (articleQuery.length < 2) {
-      const id = setTimeout(() => setArticleResults([]), 0);
-      return () => clearTimeout(id);
+      if (articleDebounceRef.current) clearTimeout(articleDebounceRef.current);
+      setArticleLoading(true);
+      getArticulosForPedidoAction("").then((res) => {
+        if ("data" in res) {
+          setArticleResults(res.data);
+        }
+        setArticleLoading(false);
+      });
+      return;
     }
 
     if (articleDebounceRef.current) clearTimeout(articleDebounceRef.current);
@@ -278,7 +303,7 @@ export function PedidoForm() {
     return () => {
       if (articleDebounceRef.current) clearTimeout(articleDebounceRef.current);
     };
-  }, [articleQuery]);
+  }, [articleQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Step 3: Domiciliarios list + real-time deuda refresh ──
   const [domiciliarios, setDomiciliarios] = useState<DomiciliarioResult[]>([]);
@@ -320,14 +345,36 @@ export function PedidoForm() {
     setIsVentaRapida(false);
   };
 
-  const openQuantityInput = (article: ArticleResult) => {
-    setAddingArticleId(article.id);
-    setAddingQuantity(1);
-  };
+  /**
+   * Venta rápida toggle: preserves clienteNombre across mode switches.
+   * - OFF → ON: show name input, keep existing clienteNombre if any
+   * - ON → OFF: show client list, keep clienteNombre in memory
+   * Only clear clienteNombre on explicit "X" or new client selection.
+   */
+  const handleVentaRapidaToggle = useCallback(() => {
+    setIsVentaRapida((prev) => {
+      const next = !prev;
+      // When turning ON: if a client was selected, unselect it
+      if (next && clienteId) {
+        // We can't call unselectClient here (hook rule), so schedule it
+        // Use setTimeout to avoid state-during-render issues
+        setTimeout(() => unselectClient(), 0);
+      }
+      return next;
+    });
+  }, [clienteId]);
 
-  const confirmAddItem = () => {
-    const article = articleResults.find((a) => a.id === addingArticleId);
-    if (!article || addingQuantity < 1) return;
+  /**
+   * Quick-add: click on a product row → adds 1 unit to cart.
+   * Tap again → adds another unit. No quantity popup needed.
+   */
+  const handleQuickAdd = (article: ArticleResult) => {
+    if (article.stockActual <= 0) return;
+
+    // Visual feedback: show checkmark on the tapped row
+    if (lastAddedTimer.current) clearTimeout(lastAddedTimer.current);
+    setLastAddedId(article.id);
+    lastAddedTimer.current = setTimeout(() => setLastAddedId(null), 600);
 
     setItems((prev) => {
       const existing = prev.find((i) => i.articuloId === article.id);
@@ -336,8 +383,8 @@ export function PedidoForm() {
           i.articuloId === article.id
             ? {
                 ...i,
-                cantidad: i.cantidad + addingQuantity,
-                subtotal: (i.cantidad + addingQuantity) * i.precio,
+                cantidad: i.cantidad + 1,
+                subtotal: (i.cantidad + 1) * i.precio,
               }
             : i,
         );
@@ -349,20 +396,35 @@ export function PedidoForm() {
           nombre: article.nombre,
           presentacion: article.presentacion,
           precio: article.precio,
-          cantidad: addingQuantity,
-          subtotal: addingQuantity * article.precio,
+          cantidad: 1,
+          subtotal: article.precio,
         },
       ];
     });
-
-    setAddingArticleId(null);
-    setAddingQuantity(1);
-    setArticleQuery("");
-    setArticleResults([]);
   };
 
   const removeItem = (articuloId: string) => {
     setItems((prev) => prev.filter((i) => i.articuloId !== articuloId));
+  };
+
+  const increaseQty = (articuloId: string) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.articuloId === articuloId
+          ? { ...i, cantidad: i.cantidad + 1, subtotal: (i.cantidad + 1) * i.precio }
+          : i,
+      ),
+    );
+  };
+
+  const decreaseQty = (articuloId: string) => {
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.articuloId !== articuloId) return i;
+        if (i.cantidad <= 1) return i; // don't go below 1
+        return { ...i, cantidad: i.cantidad - 1, subtotal: (i.cantidad - 1) * i.precio };
+      }),
+    );
   };
 
   const handleConfirm = async () => {
@@ -399,9 +461,222 @@ export function PedidoForm() {
   };
 
   // ── Step 1 validation ──
-  const step1Valid = clienteId !== undefined || (isVentaRapida && clienteNombre.trim().length > 0);
+  const step1Valid =
+    clienteId !== undefined || (isVentaRapida && clienteNombre.trim().length > 0);
   // ── Step 2 validation ──
   const step2Valid = items.length > 0;
+
+  // ── Render helpers ──
+
+  const renderClientList = () => {
+    if (clientInitialLoading) {
+      return (
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 size-4 animate-spin" />
+          Cargando clientes...
+        </div>
+      );
+    }
+
+    if (clientLoading) {
+      return (
+        <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 size-4 animate-spin" />
+          Buscando...
+        </div>
+      );
+    }
+
+    if (clientResults.length === 0) {
+      return (
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <Users className="size-8 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            {clientQuery.length >= 2
+              ? "No se encontraron clientes"
+              : "No hay clientes registrados"}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <ul className="divide-y">
+        {clientResults.map((client) => (
+          <li key={client.id}>
+            <button
+              type="button"
+              onClick={() => selectClient(client)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-sm transition-colors hover:bg-accent cursor-pointer min-h-[52px]"
+            >
+              <div className="min-w-0">
+                <p className="font-medium truncate">{client.nombreCompleto}</p>
+                {client.telefono && (
+                  <p className="text-xs text-muted-foreground">
+                    {client.telefono}
+                  </p>
+                )}
+              </div>
+              {client.deuda > 0 ? (
+                <Badge variant="warning" className="shrink-0">
+                  Deuda: {formatCOP(client.deuda)}
+                </Badge>
+              ) : (
+                <Badge variant="success" className="shrink-0">
+                  AL DÍA
+                </Badge>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const renderProductList = () => {
+    if (articleInitialLoading) {
+      return (
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 size-4 animate-spin" />
+          Cargando artículos...
+        </div>
+      );
+    }
+
+    if (articleLoading) {
+      return (
+        <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 size-4 animate-spin" />
+          Buscando...
+        </div>
+      );
+    }
+
+    if (articleResults.length === 0) {
+      return (
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <Package className="size-8 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            {articleQuery.length >= 2
+              ? "No se encontraron artículos"
+              : "No hay artículos disponibles"}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <ul className="divide-y">
+        {articleResults.map((article) => (
+          <li key={article.id}>
+            <button
+              type="button"
+              onClick={() => handleQuickAdd(article)}
+              disabled={article.stockActual <= 0}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-sm transition-colors hover:bg-accent cursor-pointer min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium truncate">{article.nombre}</p>
+                <p className="text-xs text-muted-foreground">
+                  {article.presentacion} &middot; Stock: {article.stockActual}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
+                  {formatCOP(article.precio)}
+                </span>
+                <span
+                  className={`flex size-7 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 ${
+                    lastAddedId === article.id
+                      ? "scale-125 bg-emerald-500 text-white"
+                      : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  {lastAddedId === article.id ? (
+                    <CheckCircle className="size-4" />
+                  ) : (
+                    "+"
+                  )}
+                </span>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const renderCart = () => {
+    if (items.length === 0) {
+      return (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Todavía no agregaste productos
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <ul className="divide-y">
+        {items.map((item) => (
+          <li
+            key={item.articuloId}
+            className="flex items-center justify-between gap-3 py-3"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{item.nombre}</p>
+              <p className="text-xs text-muted-foreground">
+                {item.presentacion}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Quantity controls */}
+              <div className="flex items-center gap-1 rounded-lg border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => decreaseQty(item.articuloId)}
+                  disabled={item.cantidad <= 1}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                  aria-label="Disminuir cantidad"
+                >
+                  <Minus className="size-3.5" />
+                </button>
+                <span className="min-w-[24px] text-center text-sm font-semibold tabular-nums">
+                  {item.cantidad}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => increaseQty(item.articuloId)}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                  aria-label="Aumentar cantidad"
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
+              <span className="text-sm font-medium tabular-nums min-w-[60px] text-right">
+                {formatCOP(item.subtotal)}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeItem(item.articuloId)}
+                aria-label={`Quitar ${item.nombre}`}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </div>
+          </li>
+        ))}
+        <div className="flex items-center justify-between pt-3">
+          <span className="text-sm font-medium">Subtotal</span>
+          <span className="text-sm font-semibold tabular-nums">
+            {formatCOP(subtotal)}
+          </span>
+        </div>
+      </ul>
+    );
+  };
 
   // ── Render ──
 
@@ -435,34 +710,33 @@ export function PedidoForm() {
             <CardTitle>Paso 1: Cliente</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Toggle: Venta rápida */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isVentaRapida}
-                onClick={() => {
-                  setIsVentaRapida(!isVentaRapida);
-                  if (!isVentaRapida) {
-                    unselectClient();
-                  }
-                }}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  isVentaRapida ? "bg-primary" : "bg-input"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none block size-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
-                    isVentaRapida ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
-              <Label>Venta rápida (sin cliente registrado)</Label>
-            </div>
-
-            {isVentaRapida ? (
+            {/* Selected client badge (when a client is selected) */}
+            {clienteId ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-4 py-3">
+                <div>
+                  <p className="font-medium text-sm">{clienteNombre}</p>
+                  {clienteDeuda > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Deuda: {formatCOP(clienteDeuda)}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={unselectClient}
+                  aria-label="Quitar cliente"
+                  className="cursor-pointer"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            ) : isVentaRapida ? (
+              /* Venta rápida name input */
               <div className="space-y-2">
-                <Label htmlFor="clienteNombre">Nombre del cliente</Label>
+                <Label htmlFor="clienteNombre">
+                  Nombre del cliente
+                </Label>
                 <Input
                   id="clienteNombre"
                   placeholder="Ej: Cliente mostrador"
@@ -472,74 +746,56 @@ export function PedidoForm() {
                     if (clienteId) unselectClient();
                   }}
                   autoFocus
+                  className="h-10"
                 />
               </div>
             ) : (
               <>
-                {/* Client search */}
-                <div className="space-y-2">
-                  <Label htmlFor="clientSearch">Buscar cliente</Label>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="clientSearch"
-                      placeholder="Escribí nombre del cliente..."
-                      value={clientQuery}
-                      onChange={(e) => setClientQuery(e.target.value)}
-                      className="pl-8"
-                      autoFocus
-                    />
-                  </div>
+                {/* Search + browse */}
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar cliente por nombre..."
+                    value={clientQuery}
+                    onChange={(e) => setClientQuery(e.target.value)}
+                    className="pl-9 h-10"
+                    autoFocus
+                  />
                 </div>
 
-                {/* Selected client badge */}
-                {clienteId && (
-                  <div className="flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm">
-                    <span className="font-medium">{clienteNombre}</span>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={unselectClient}
-                      aria-label="Quitar cliente"
-                    >
-                      <X className="size-3" />
-                    </Button>
-                  </div>
-                )}
-
-                {/* Results */}
-                {!clienteId && (
-                  <SearchResultList
-                    results={clientResults}
-                    loading={clientLoading}
-                    emptyMessage={
-                      clientQuery.length < 2
-                        ? "Escribí al menos 2 caracteres para buscar"
-                        : "No se encontraron clientes"
-                    }
-                    selectedId={clienteId}
-                    onSelect={selectClient}
-                    renderItem={(c) => (
-                      <div className="flex w-full items-center justify-between">
-                        <div>
-                          <p className="font-medium">{c.nombreCompleto}</p>
-                          {c.telefono && (
-                            <p className="text-xs text-muted-foreground">
-                              {c.telefono}
-                            </p>
-                          )}
-                        </div>
-                        {c.deuda > 0 && (
-                          <Badge variant="warning" className="shrink-0">
-                            Deuda: {formatCOP(c.deuda)}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  />
-                )}
+                {/* Results list */}
+                <div className="-mx-4 max-h-[320px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
+                  {renderClientList()}
+                </div>
               </>
             )}
+
+            {/* Venta rápida toggle (always visible) */}
+            <div className="flex items-center gap-3 pt-2 border-t">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isVentaRapida}
+                onClick={handleVentaRapidaToggle}
+                className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  isVentaRapida ? "bg-primary" : "bg-input"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                    isVentaRapida ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <div className="flex flex-col">
+                <Label className="cursor-pointer" onClick={handleVentaRapidaToggle}>
+                  Venta rápida
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Sin cliente registrado
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -548,168 +804,69 @@ export function PedidoForm() {
                STEP 2 — PRODUCTOS
           ═══════════════════════════════════════════════ */}
       {currentStep === 2 && (
-        <div className="space-y-6">
-          {/* Article search */}
+        <div className="space-y-4">
+          {/* Product browser */}
           <Card>
             <CardHeader>
-              <CardTitle>Buscar artículos</CardTitle>
+              <CardTitle>Productos</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
+              {/* Search */}
               <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Escribí nombre del artículo..."
+                  placeholder="Buscar producto por nombre..."
                   value={articleQuery}
-                  onChange={(e) => {
-                    setArticleQuery(e.target.value);
-                    setAddingArticleId(null);
-                  }}
-                  className="pl-8"
+                  onChange={(e) => setArticleQuery(e.target.value)}
+                  className="pl-9 h-10"
                   autoFocus
                 />
               </div>
 
-              {/* Results */}
-              {articleQuery.length < 2 ? (
-                <p className="py-2 text-center text-sm text-muted-foreground">
-                  Escribí al menos 2 caracteres para buscar
-                </p>
-              ) : articleLoading ? (
-                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Buscando...
-                </div>
-              ) : articleResults.length === 0 ? (
-                <p className="py-2 text-center text-sm text-muted-foreground">
-                  No se encontraron artículos
-                </p>
-              ) : (
-                <ul className="divide-y">
-                  {articleResults.map((article) => (
-                    <li
-                      key={article.id}
-                      className="flex items-center justify-between gap-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {article.nombre}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {article.presentacion} &middot;{" "}
-                          {formatCOP(article.precio)}
-                          <span
-                            className={
-                              article.stockActual <= 0
-                                ? "ml-2 text-destructive"
-                                : "ml-2 text-muted-foreground"
-                            }
-                          >
-                            Stock: {article.stockActual}
-                          </span>
-                        </p>
-                      </div>
-
-                      {addingArticleId === article.id ? (
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Input
-                            type="number"
-                            min={1}
-                            max={Math.max(1, article.stockActual)}
-                            value={addingQuantity}
-                            onChange={(e) =>
-                              setAddingQuantity(
-                                Math.max(1, parseInt(e.target.value) || 1),
-                              )
-                            }
-                            className="h-8 w-20 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            inputMode="numeric"
-                            autoFocus
-                          />
-                          <Button size="sm" onClick={confirmAddItem}>
-                            <Plus className="size-3" />
-                            Agregar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setAddingArticleId(null)}
-                          >
-                            <X className="size-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openQuantityInput(article)}
-                          disabled={article.stockActual <= 0}
-                          className="shrink-0"
-                        >
-                          <Plus className="size-3" />
-                          Agregar
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {/* Product list */}
+              <div className="-mx-4 max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
+                {renderProductList()}
+              </div>
             </CardContent>
           </Card>
 
           {/* Cart */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                Productos seleccionados ({items.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {items.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  Todavía no agregaste productos
-                </p>
-              ) : (
-                <>
-                  <ul className="divide-y">
-                    {items.map((item) => (
-                      <li
-                        key={item.articuloId}
-                        className="flex items-center justify-between gap-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {item.nombre}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.cantidad} × {formatCOP(item.precio)}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className="text-sm font-medium tabular-nums">
-                            {formatCOP(item.subtotal)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => removeItem(item.articuloId)}
-                            aria-label={`Quitar ${item.nombre}`}
-                          >
-                            <Trash2 className="size-3 text-destructive" />
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="flex items-center justify-between border-t pt-3">
-                    <span className="text-sm font-medium">Subtotal</span>
-                    <span className="text-sm font-semibold tabular-nums">
-                      {formatCOP(subtotal)}
+              <button
+                type="button"
+                onClick={() => setCartOpen(!cartOpen)}
+                className="flex w-full items-center justify-between cursor-pointer"
+              >
+                <CardTitle>
+                  <span className="flex items-center gap-2">
+                    Carrito
+                    <span
+                      className={`inline-flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground tabular-nums transition-transform duration-300 ${
+                        cartBump ? "scale-125" : "scale-100"
+                      }`}
+                    >
+                      {totalQty}
                     </span>
-                  </div>
-                </>
-              )}
-            </CardContent>
+                  </span>
+                </CardTitle>
+                {items.length > 0 && (
+                  <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                    {formatCOP(subtotal)}
+                    {cartOpen ? (
+                      <ChevronUp className="size-4" />
+                    ) : (
+                      <ChevronDown className="size-4" />
+                    )}
+                  </span>
+                )}
+              </button>
+            </CardHeader>
+            {cartOpen && (
+              <CardContent>
+                {renderCart()}
+              </CardContent>
+            )}
           </Card>
         </div>
       )}
@@ -812,7 +969,7 @@ export function PedidoForm() {
                         key={mp}
                         type="button"
                         onClick={() => setMetodoPago(mp)}
-                        className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                        className={`rounded-lg border px-4 py-2 text-sm transition-colors cursor-pointer ${
                           metodoPago === mp
                             ? "border-primary bg-primary/10 text-primary font-medium"
                             : "border-input bg-transparent text-muted-foreground hover:bg-accent"
