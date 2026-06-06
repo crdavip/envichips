@@ -10,6 +10,7 @@ import {
   actualizarEstado,
   cancelarPedido,
   confirmarCobroAdmin,
+  asignarDomiciliario,
   validateFiadoDebt,
 } from "@/lib/services/pedidos";
 import { getDeudaCliente } from "@/lib/services/clientes";
@@ -19,10 +20,12 @@ import {
   updateEstadoSchema,
   cancelarPedidoSchema,
   confirmarCobroSchema,
+  asignarDomiciliarioSchema,
 } from "@/lib/validations/pedidos";
 import type {
   CreatePedidoInput,
   UpdateEstadoInput,
+  AsignarDomiciliarioInput,
 } from "@/lib/validations/pedidos";
 
 // ─── QUERIES ───────────────────────────────────────
@@ -219,6 +222,41 @@ export async function getClientesAction(
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Error al buscar clientes",
+    };
+  }
+}
+
+// ─── ASIGNAR DOMICILIARIO ─────────────────────────────
+
+export async function asignarDomiciliarioAction(
+  id: string,
+  raw: AsignarDomiciliarioInput,
+): Promise<
+  | { data: Awaited<ReturnType<typeof asignarDomiciliario>> }
+  | { error: string }
+> {
+  const parsed = asignarDomiciliarioSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((i) => i.message).join(", ") };
+  }
+
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "Debes iniciar sesión" };
+    }
+
+    const { rol } = session.user as { rol: string };
+    if (rol !== "ADMIN" && rol !== "SUPERADMIN") {
+      return { error: "Solo administradores pueden asignar domiciliarios" };
+    }
+
+    const data = await asignarDomiciliario(id, parsed.data.domiciliarioId, session.user.id);
+    revalidatePath("/pedidos");
+    return { data };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Error al asignar domiciliario",
     };
   }
 }

@@ -32,13 +32,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectList,
+  SelectItem,
+} from "@/components/ui/select";
 import { PedidoStatusBadge } from "@/components/pedidos/PedidoStatusBadge";
 import { formatCOP } from "@/lib/format";
 import {
   cancelarPedidoAction,
   confirmarCobroAdminAction,
   updateEstadoAction,
+  asignarDomiciliarioAction,
+  getDomiciliariosAction,
 } from "@/app/(dashboard)/pedidos/actions";
+interface DomiciliarioResult {
+  id: string;
+  nombre: string;
+}
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -203,8 +217,17 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
 
   const [motivo, setMotivo] = useState("");
 
-  // ── Error / Pending ─────────────────────────────────
+  // ── Modal: domiciliario ────────────────────────────
 
+  const [showDomiciliarioModal, setShowDomiciliarioModal] = useState(false);
+  const [domiciliarios, setDomiciliarios] = useState<DomiciliarioResult[]>([]);
+  const [selectedDomiciliarioId, setSelectedDomiciliarioId] = useState<
+    string | undefined
+  >(pedido.domiciliario?.id ?? undefined);
+  const [isPendingDomiciliario, startTransitionDomiciliario] = useTransition();
+
+  // ── Error / Pending ─────────────────────────────────
+ 
   const [error, setError] = useState<string | null>(null);
   const [isPendingEntregar, startTransitionEntregar] = useTransition();
   const [isPendingCamino, startTransitionCamino] = useTransition();
@@ -234,7 +257,37 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
     !pedido.pagoEntregadoAdmin &&
     isAdmin;
 
+  const puedeCambiarDomiciliario =
+    (pedido.estado === "PENDIENTE" || pedido.estado === "EN_CAMINO") &&
+    isAdmin;
+
   // ── Actions ─────────────────────────────────────────
+
+  // Load domiciliarios when modal opens
+  const handleOpenDomiciliarioModal = useCallback(() => {
+    setSelectedDomiciliarioId(pedido.domiciliario?.id ?? undefined);
+    getDomiciliariosAction().then((res) => {
+      if ("data" in res) {
+        setDomiciliarios(res.data);
+      }
+    });
+    setShowDomiciliarioModal(true);
+  }, [pedido.domiciliario?.id]);
+
+  const handleAsignarDomiciliario = useCallback(() => {
+    startTransitionDomiciliario(async () => {
+      setError(null);
+      const res = await asignarDomiciliarioAction(pedido.id, {
+        domiciliarioId: selectedDomiciliarioId ?? null,
+      });
+      if ("error" in res) {
+        setError(res.error);
+      } else {
+        setShowDomiciliarioModal(false);
+        router.refresh();
+      }
+    });
+  }, [pedido.id, selectedDomiciliarioId, router]);
 
   const handleMarcarCamino = useCallback(() => {
     startTransitionCamino(async () => {
@@ -412,9 +465,18 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
               <dt className="text-xs font-medium text-muted-foreground">
                 Domiciliario
               </dt>
-              <dd className="text-sm">
+              <dd className="flex items-center gap-2 text-sm">
                 {pedido.domiciliario?.nombre ?? (
                   <span className="italic text-muted-foreground">&mdash;</span>
+                )}
+                {puedeCambiarDomiciliario && (
+                  <button
+                    type="button"
+                    onClick={handleOpenDomiciliarioModal}
+                    className="text-xs font-medium text-primary hover:underline cursor-pointer"
+                  >
+                    Cambiar
+                  </button>
                 )}
               </dd>
             </div>
@@ -764,6 +826,76 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
                 <Loader2 className="size-4 animate-spin" />
               )}
               Sí, confirmar recepción
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Cambiar Domiciliario ────────────────── */}
+      <Dialog
+        open={showDomiciliarioModal}
+        onOpenChange={setShowDomiciliarioModal}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar domiciliario</DialogTitle>
+            <DialogDescription>
+              {pedido.domiciliario
+                ? `Domiciliario actual: ${pedido.domiciliario.nombre}`
+                : "Este pedido no tiene domiciliario asignado"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <SelectRoot
+              value={selectedDomiciliarioId ?? "__none__"}
+              onValueChange={(value) =>
+                setSelectedDomiciliarioId(
+                  value === "__none__" || value === null
+                    ? undefined
+                    : value,
+                )
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar domiciliario">
+                  {selectedDomiciliarioId
+                    ? domiciliarios.find(
+                        (d) => d.id === selectedDomiciliarioId,
+                      )?.nombre ?? "Seleccionar"
+                    : "Sin domiciliario"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectList>
+                  <SelectItem value="__none__">
+                    Sin domiciliario
+                  </SelectItem>
+                  {domiciliarios.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectRoot>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDomiciliarioModal(false)}
+            >
+              Volver
+            </Button>
+            <Button
+              disabled={isPendingDomiciliario}
+              onClick={handleAsignarDomiciliario}
+            >
+              {isPendingDomiciliario && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>

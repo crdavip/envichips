@@ -48,9 +48,14 @@ export const confirmarCobroSchema = z.object({
   pedidoId: z.string().uuid(),
 });
 
+export const asignarDomiciliarioSchema = z.object({
+  domiciliarioId: z.string().uuid().nullable(),
+});
+
 // ─── OUTPUT TYPES ──────────────────────────────────
 
 export type CreatePedidoInput = z.output<typeof createPedidoSchema>;
 export type UpdateEstadoInput = z.output<typeof updateEstadoSchema>;
 export type CancelarPedidoInput = z.output<typeof cancelarPedidoSchema>;
 export type ConfirmarCobroInput = z.output<typeof confirmarCobroSchema>;
+export type AsignarDomiciliarioInput = z.output<typeof asignarDomiciliarioSchema>;

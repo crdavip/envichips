@@ -366,6 +366,64 @@ export async function cancelarPedido(
   });
 }
 
+// ─── ASIGNAR DOMICILIARIO ─────────────────────────
+
+export async function asignarDomiciliario(
+  id: string,
+  domiciliarioId: string | null,
+  cambiadoPorId: string,
+) {
+  return db.$transaction(async (tx) => {
+    const pedido = await tx.pedido.findUniqueOrThrow({
+      where: { id },
+      include: { domiciliario: true },
+    });
+
+    // Only allow if pedido is not in a terminal state
+    if (pedido.estado === "ENTREGADO" || pedido.estado === "CANCELADO") {
+      throw new Error(
+        `No se puede cambiar el domiciliario de un pedido ${pedido.estado.toLowerCase()}`,
+      );
+    }
+
+    const nombreAnterior = pedido.domiciliario?.nombre ?? null;
+
+    // Get new domiciliario name if set
+    let nombreNuevo = "Ninguno";
+    if (domiciliarioId) {
+      const nuevo = await tx.user.findUniqueOrThrow({
+        where: { id: domiciliarioId },
+        select: { nombre: true },
+      });
+      nombreNuevo = nuevo.nombre;
+    }
+
+    // Build audit motivo
+    const motivo = nombreAnterior
+      ? `Domiciliario cambiado: ${nombreAnterior} → ${nombreNuevo}`
+      : `Domiciliario asignado: ${nombreNuevo}`;
+
+    const updated = await tx.pedido.update({
+      where: { id },
+      data: { domiciliarioId: domiciliarioId ?? null },
+      include: { cliente: true, domiciliario: true, items: true },
+    });
+
+    // Register in HistorialEstado (same state, just domiciliario change)
+    await tx.historialEstado.create({
+      data: {
+        pedidoId: id,
+        estadoAntes: pedido.estado,
+        estadoDespues: pedido.estado,
+        cambiadoPorId,
+        motivo,
+      },
+    });
+
+    return updated;
+  });
+}
+
 // ─── PAYMENT CONFIRMATION ─────────────────────────
 
 export async function confirmarCobroAdmin(id: string) {
