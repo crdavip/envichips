@@ -6,6 +6,7 @@ import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPedidoByIdAction } from "@/app/(dashboard)/pedidos/actions";
 import { formatCOP } from "@/lib/format";
+import { LogoType } from "@/components/logo/logotype";
 import type { PedidoData } from "@/components/pedidos/PedidoDetail";
 import "./print.css";
 
@@ -127,7 +128,9 @@ export default function ImprimirPage({ params }: Props) {
       <div className="print-container">
         {/* ── Header ── */}
         <div className="print-header">
-          <p className="print-brand">Envichips</p>
+          <div className="print-logo">
+            <LogoType className="print-logo-svg" />
+          </div>
           <p className="print-brand-sub">Distribución de Snacks</p>
         </div>
 

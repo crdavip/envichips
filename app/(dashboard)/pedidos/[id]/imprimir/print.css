@@ -78,12 +78,25 @@
     margin-bottom: 2mm;
   }
 
-  .print-brand {
-    font-size: 12pt;
-    font-weight: bold;
-    letter-spacing: 1pt;
-    text-transform: uppercase;
-    margin: 0;
+  .print-logo {
+    margin-bottom: 1mm;
+    line-height: 0;
+  }
+
+  .print-logo-svg {
+    display: inline-block;
+    width: 50mm;
+    height: auto;
+    max-width: 100%;
+  }
+
+  /* Preserve logo colors — override the * rule below */
+  .print-logo,
+  .print-logo * {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: none !important;
   }
 
   .print-brand-sub {
@@ -252,9 +265,8 @@
     font-size: 7pt;
   }
 
-  .print-brand {
-    font-size: 9pt;
-    letter-spacing: 0.5pt;
+  .print-logo-svg {
+    width: 38mm;
   }
 
   .print-brand-sub {
@@ -332,8 +344,8 @@
     font-size: 8.5pt;
   }
 
-  .print-brand {
-    font-size: 13pt;
+  .print-logo-svg {
+    width: 58mm;
   }
 
   .print-divider,
@@ -378,9 +390,8 @@
     line-height: 1.5;
   }
 
-  .print-brand {
-    font-size: 18pt;
-    letter-spacing: 2pt;
+  .print-logo-svg {
+    width: 100mm;
   }
 
   .print-brand-sub {
