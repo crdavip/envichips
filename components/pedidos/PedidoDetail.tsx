@@ -444,39 +444,71 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
           <CardTitle>Productos</CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:px-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Artículo</TableHead>
-                <TableHead className="text-right">Cant.</TableHead>
-                <TableHead className="text-right">Precio Unit.</TableHead>
-                <TableHead className="text-right">Subtotal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pedido.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <span className="font-medium">
-                      {item.articulo.nombre}
-                    </span>
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      {item.articulo.presentacion}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {item.cantidad}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCOP(item.precio)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
-                    {formatCOP(item.subtotal)}
-                  </TableCell>
+          {/* Desktop table */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Artículo</TableHead>
+                  <TableHead className="text-right">Cant.</TableHead>
+                  <TableHead className="text-right">Precio Unit.</TableHead>
+                  <TableHead className="text-right">Subtotal</TableHead>
                 </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pedido.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <span className="font-medium">
+                        {item.articulo.nombre}
+                      </span>
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        {item.articulo.presentacion}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.cantidad}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCOP(item.precio)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">
+                      {formatCOP(item.subtotal)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile list */}
+          <div className="block sm:hidden">
+            <div className="divide-y">
+              {pedido.items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {item.articulo.nombre}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.articulo.presentacion}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                      {formatCOP(item.precio)} c/u
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      ×{item.cantidad}
+                    </p>
+                    <p className="text-sm font-semibold tabular-nums whitespace-nowrap">
+                      {formatCOP(item.subtotal)}
+                    </p>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          </div>
 
           {/* Totals */}
           <div className="flex flex-col items-end gap-1 border-t px-4 py-3 sm:px-0">
