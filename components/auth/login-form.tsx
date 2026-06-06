@@ -1,31 +1,44 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
-import type { ActionState } from "@/app/(auth)/login/page";
 
-export function LoginForm({
-  loginAction,
-}: {
-  loginAction: (
-    prevState: ActionState,
-    formData: FormData,
-  ) => Promise<ActionState>;
-}) {
+export function LoginForm() {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(loginAction, null);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    if (state?.success) {
-      router.push("/");
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setIsPending(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setError("Credenciales inválidas");
+      setIsPending(false);
+      return;
     }
-  }, [state, router]);
+
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <Card className="w-full max-w-sm shadow-lg">
@@ -39,7 +52,7 @@ export function LoginForm({
           </p>
         </div>
 
-        <form action={formAction} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -80,10 +93,10 @@ export function LoginForm({
             </div>
           </div>
 
-          {state?.error && (
+          {error && (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span>{state.error}</span>
+              <span>{error}</span>
             </div>
           )}
 
