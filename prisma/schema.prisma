@@ -2,7 +2,7 @@
 // Basado en docs/PRD.md v1.1
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
