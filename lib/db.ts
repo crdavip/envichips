@@ -9,7 +9,7 @@ const globalForPrisma = globalThis as unknown as {
 
 const pool =
   globalForPrisma.pool ??
-  new Pool({ connectionString: process.env.DATABASE_URL });
+  new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 });
 globalForPrisma.pool = pool;
 
 const adapter = new PrismaPg(pool);
