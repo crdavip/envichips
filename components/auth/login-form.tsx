@@ -24,25 +24,42 @@ export function LoginForm() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    // Timeout de seguridad: si la request tarda más de 30s, mostramos error
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
-    if (result?.error) {
-      console.error("[login] signIn error:", result.error);
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      clearTimeout(timeout);
+
+      if (result?.error) {
+        console.error("[login] signIn error:", result.error);
+        setError(
+          result.error === "CredentialsSignin"
+            ? "Credenciales inválidas"
+            : `Error de autenticación: ${result.error}`,
+        );
+        setIsPending(false);
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      clearTimeout(timeout);
+      console.error("[login] signIn exception:", err);
       setError(
-        result.error === "CredentialsSignin"
-          ? "Credenciales inválidas"
-          : `Error de autenticación: ${result.error}`,
+        err instanceof DOMException && err.name === "AbortError"
+          ? "La solicitud tardó demasiado. Intentá de nuevo."
+          : "Error inesperado. Revisá la consola o intentá de nuevo.",
       );
       setIsPending(false);
-      return;
     }
-
-    router.push("/");
-    router.refresh();
   }
 
   return (
