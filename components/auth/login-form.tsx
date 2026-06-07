@@ -31,7 +31,12 @@ export function LoginForm() {
     });
 
     if (result?.error) {
-      setError("Credenciales inválidas");
+      console.error("[login] signIn error:", result.error);
+      setError(
+        result.error === "CredentialsSignin"
+          ? "Credenciales inválidas"
+          : `Error de autenticación: ${result.error}`,
+      );
       setIsPending(false);
       return;
     }

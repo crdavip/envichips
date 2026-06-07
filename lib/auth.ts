@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
@@ -19,31 +20,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = credentials.email as string;
         const password = credentials.password as string;
 
-        const user = await db.user.findUnique({
-          where: { email },
-        });
+        try {
+          const user = await db.user.findUnique({
+            where: { email },
+          });
 
-        if (!user || !user.activo) {
+          if (!user || !user.activo) {
+            return null;
+          }
+
+          const isValid = await bcrypt.compare(password, user.password);
+          if (!isValid) {
+            return null;
+          }
+
+          // Actualizar último acceso
+          await db.user.update({
+            where: { id: user.id },
+            data: { ultimoAcceso: new Date() },
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.nombre,
+            rol: user.rol,
+          };
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("[auth] authorize error:", err);
           return null;
         }
-
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) {
-          return null;
-        }
-
-        // Actualizar último acceso
-        await db.user.update({
-          where: { id: user.id },
-          data: { ultimoAcceso: new Date() },
-        });
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.nombre,
-          rol: user.rol,
-        };
       },
     }),
   ],
