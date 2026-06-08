@@ -1,66 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { authenticate } from "@/app/(auth)/login/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
+import { useState } from "react";
 
 export function LoginForm() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, setIsPending] = useState(false);
+  const [state, formAction, isPending] = useActionState(authenticate, undefined);
   const [showPassword, setShowPassword] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setIsPending(true);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    // Timeout de seguridad: si la request tarda más de 30s, mostramos error
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      clearTimeout(timeout);
-
-      if (result?.error) {
-        console.error("[login] signIn error:", result.error);
-        setError(
-          result.error === "CredentialsSignin"
-            ? "Credenciales inválidas"
-            : `Error de autenticación: ${result.error}`,
-        );
-        setIsPending(false);
-        return;
-      }
-
+  useEffect(() => {
+    if (state && state.error === null) {
       router.push("/");
       router.refresh();
-    } catch (err) {
-      clearTimeout(timeout);
-      console.error("[login] signIn exception:", err);
-      setError(
-        err instanceof DOMException && err.name === "AbortError"
-          ? "La solicitud tardó demasiado. Intentá de nuevo."
-          : "Error inesperado. Revisá la consola o intentá de nuevo.",
-      );
-      setIsPending(false);
     }
-  }
+  }, [state, router]);
 
   return (
     <Card className="w-full max-w-sm shadow-lg">
@@ -74,7 +35,7 @@ export function LoginForm() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form action={formAction} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -115,10 +76,10 @@ export function LoginForm() {
             </div>
           </div>
 
-          {error && (
+          {state?.error && (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span>{error}</span>
+              <span>{state.error}</span>
             </div>
           )}
 
