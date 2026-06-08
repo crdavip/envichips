@@ -3,14 +3,20 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 function normalizeConnectionString(url: string): string {
-  // Use require (not verify-full) for broader SSL compatibility.
-  // verify-full requires system CA certificates that may not be present
-  // in serverless environments like Vercel.
-  if (url.includes("sslmode=")) {
-    return url.replace(/sslmode=\w+/g, "sslmode=require");
+  try {
+    // pg v8 treats sslmode=require as an alias for verify-full.
+    // uselibpqcompat=true opts into true libpq-compatible behavior:
+    // encryption without CA certificate verification, needed in
+    // serverless environments (Vercel) where system CA certs may be absent.
+    const u = new URL(url);
+    u.searchParams.set("sslmode", "require");
+    u.searchParams.set("uselibpqcompat", "true");
+    return u.toString();
+  } catch {
+    // Malformed URL — just append params as fallback
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}sslmode=require&uselibpqcompat=true`;
   }
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}sslmode=require`;
 }
 
 const globalForPrisma = globalThis as unknown as {
