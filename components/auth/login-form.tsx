@@ -1,16 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
 
-export function LoginForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+export function LoginForm({ urlError }: { urlError?: string }) {
+  const [error, setError] = useState<string | null>(
+    urlError === "CredentialsSignin"
+      ? "Credenciales inválidas"
+      : urlError
+        ? `Error de autenticación (${urlError})`
+        : null,
+  );
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const csrfRef = useRef<string | null>(null);
@@ -43,52 +47,37 @@ export function LoginForm() {
         csrfToken = data.csrfToken;
       }
 
-      // POST directly to the credentials callback handler.
+      // Direct native form POST to the credentials callback handler.
       // This bypasses the buggy client signIn() AND the server action signIn()
-      // (see nextauthjs/next-auth#13387 for context).
-      const params = new URLSearchParams({
-        csrfToken: csrfToken!,
-        email: formData.get("email") as string,
-        password: formData.get("password") as string,
-        callbackUrl: "/",
-      });
+      // (see nextauthjs/next-auth#13387 for context). The browser handles
+      // Set-Cookie and 302 redirects natively — the same flow NextAuth's
+      // built-in sign-in page uses and is confirmed working on Vercel.
+      // browser handle the 302 redirect naturally. The Set-Cookie headers
+      // from the redirect response are stored by the browser.
+      // We use a temporary form to submit natively — this is the same
+      // pattern NextAuth's built-in sign-in page uses and is confirmed
+      // working by nextauthjs/next-auth#13387.
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/api/auth/callback/credentials";
 
-      const res = await fetch("/api/auth/callback/credentials", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-        redirect: "manual",
-      });
-
-      // The browser processes Set-Cookie headers automatically.
-      // A 302 redirect means the auth was processed; check where it goes.
-      if (res.status === 200 || res.status === 302) {
-        const location = res.headers.get("location") ?? "";
-
-        // Extract error type from callback redirect URL for debugging
-        const errorMatch = location.match(/error=([^&]+)/);
-        const errorType = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
-
-        if (errorType) {
-          console.error("[login] auth error from callback:", errorType, "location:", location);
-          if (errorType === "CredentialsSignin") {
-            setError("Credenciales inválidas");
-          } else {
-            setError(`Error de autenticación (${errorType}). Revisá los logs de Vercel.`);
-          }
-          setIsPending(false);
-          return;
-        }
-        // Session cookie set — navigate to dashboard
-        router.push("/");
-        router.refresh();
-      } else {
-        console.error("[login] unexpected status:", res.status, res.statusText);
-        setError("Error inesperado. Revisá los logs de Vercel.");
-        setIsPending(false);
+      for (const [key, val] of [
+        ["csrfToken", csrfToken!],
+        ["email", formData.get("email") as string],
+        ["password", formData.get("password") as string],
+        ["callbackUrl", "/"],
+      ]) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = val;
+        form.appendChild(input);
       }
+
+      document.body.appendChild(form);
+      form.submit();
+      // The browser navigates away — no need to set isPending(false)
+      return;
     } catch (err) {
       console.error("[login] fetch error:", err);
       setError("Error inesperado. Revisá la consola o intentá de nuevo.");
