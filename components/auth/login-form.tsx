@@ -1,27 +1,89 @@
 "use client";
 
-import { useEffect } from "react";
-import { useActionState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { authenticate } from "@/app/(auth)/login/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
-import { useState } from "react";
 
 export function LoginForm() {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(authenticate, undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const csrfRef = useRef<string | null>(null);
 
+  // Fetch CSRF token once on mount
   useEffect(() => {
-    if (state && state.error === null) {
-      router.push("/");
-      router.refresh();
+    fetch("/api/auth/csrf")
+      .then((r) => r.json())
+      .then((data) => {
+        csrfRef.current = data.csrfToken;
+      })
+      .catch(() => {
+        /* will retry on submit */
+      });
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setIsPending(true);
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      // Ensure we have a CSRF token
+      let csrfToken = csrfRef.current;
+      if (!csrfToken) {
+        const csrfRes = await fetch("/api/auth/csrf");
+        const data = await csrfRes.json();
+        csrfToken = data.csrfToken;
+      }
+
+      // POST directly to the credentials callback handler.
+      // This bypasses the buggy client signIn() AND the server action signIn()
+      // (see nextauthjs/next-auth#13387 for context).
+      const params = new URLSearchParams({
+        csrfToken: csrfToken!,
+        email: formData.get("email") as string,
+        password: formData.get("password") as string,
+        callbackUrl: "/",
+      });
+
+      const res = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+        redirect: "manual",
+      });
+
+      // The browser processes Set-Cookie headers automatically.
+      // A 302 redirect means the auth was processed; check where it goes.
+      if (res.status === 200 || res.status === 302) {
+        const location = res.headers.get("location") ?? "";
+        if (location.includes("error=")) {
+          setError("Credenciales inválidas");
+          setIsPending(false);
+          return;
+        }
+        // Session cookie set — navigate to dashboard
+        router.push("/");
+        router.refresh();
+      } else {
+        setError("Credenciales inválidas");
+        setIsPending(false);
+      }
+    } catch (err) {
+      console.error("[login] fetch error:", err);
+      setError("Error inesperado. Revisá la consola o intentá de nuevo.");
+      setIsPending(false);
     }
-  }, [state, router]);
+  }
 
   return (
     <Card className="w-full max-w-sm shadow-lg">
@@ -35,7 +97,7 @@ export function LoginForm() {
           </p>
         </div>
 
-        <form action={formAction} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -76,10 +138,10 @@ export function LoginForm() {
             </div>
           </div>
 
-          {state?.error && (
+          {error && (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span>{state.error}</span>
+              <span>{error}</span>
             </div>
           )}
 
