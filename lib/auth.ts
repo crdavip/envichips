@@ -1,12 +1,13 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import type { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true,
+export const authOptions: NextAuthOptions = {
   providers: [
-    Credentials({
+    CredentialsProvider({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -45,7 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: user.email,
             name: user.nombre,
             rol: user.rol,
-          };
+          } as any;
         } catch (err) {
           // eslint-disable-next-line no-console
           console.error("[auth] authorize error:", err);
@@ -76,4 +77,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt",
   },
-});
+  secret: process.env.NEXTAUTH_SECRET,
+};
+
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
+
+// Backward-compatible auth() wrapper — same API as v5's auth()
+export async function auth() {
+  return getServerSession(authOptions);
+}
