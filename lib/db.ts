@@ -3,13 +3,14 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 function normalizeConnectionString(url: string): string {
-  // Suppress pg SSL deprecation warning by using explicit sslmode=verify-full.
-  // Prisma v7 uses node-pg natively — older `sslmode=require` emits a warning.
+  // Use require (not verify-full) for broader SSL compatibility.
+  // verify-full requires system CA certificates that may not be present
+  // in serverless environments like Vercel.
   if (url.includes("sslmode=")) {
-    return url.replace(/sslmode=\w+/g, "sslmode=verify-full");
+    return url.replace(/sslmode=\w+/g, "sslmode=require");
   }
   const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}sslmode=verify-full`;
+  return `${url}${sep}sslmode=require`;
 }
 
 const globalForPrisma = globalThis as unknown as {

@@ -66,8 +66,18 @@ export function LoginForm() {
       // A 302 redirect means the auth was processed; check where it goes.
       if (res.status === 200 || res.status === 302) {
         const location = res.headers.get("location") ?? "";
-        if (location.includes("error=")) {
-          setError("Credenciales inválidas");
+
+        // Extract error type from callback redirect URL for debugging
+        const errorMatch = location.match(/error=([^&]+)/);
+        const errorType = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
+
+        if (errorType) {
+          console.error("[login] auth error from callback:", errorType, "location:", location);
+          if (errorType === "CredentialsSignin") {
+            setError("Credenciales inválidas");
+          } else {
+            setError(`Error de autenticación (${errorType}). Revisá los logs de Vercel.`);
+          }
           setIsPending(false);
           return;
         }
@@ -75,7 +85,8 @@ export function LoginForm() {
         router.push("/");
         router.refresh();
       } else {
-        setError("Credenciales inválidas");
+        console.error("[login] unexpected status:", res.status, res.statusText);
+        setError("Error inesperado. Revisá los logs de Vercel.");
         setIsPending(false);
       }
     } catch (err) {
