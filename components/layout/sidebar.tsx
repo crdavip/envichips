@@ -8,7 +8,7 @@ import { LogoType } from "../logo/logotype";
 import { useSidebar } from "./sidebar-context";
 import { cn } from "@/lib/utils";
 
-export function Sidebar({ userName, userEmail }: { userName: string; userEmail: string }) {
+export function Sidebar({ userName, userEmail, userRole }: { userName: string; userEmail: string; userRole?: string }) {
   const { isCollapsed, toggle } = useSidebar();
 
   return (
@@ -48,7 +48,7 @@ export function Sidebar({ userName, userEmail }: { userName: string; userEmail: 
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        <NavLinks orientation="vertical" isCollapsed={isCollapsed} />
+        <NavLinks orientation="vertical" isCollapsed={isCollapsed} userRole={userRole} />
       </div>
 
       {/* Bottom: user menu dropdown */}

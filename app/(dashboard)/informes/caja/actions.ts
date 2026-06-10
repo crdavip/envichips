@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/authorize";
 import { createMovimiento, softDeleteMovimiento, getMovimientos, getResumenCaja } from "@/lib/services/movimientos";
 import type { MovimientoFilters, ResumenCaja } from "@/lib/services/movimientos";
 import { createMovimientoSchema, deleteMovimientoSchema, filtrosMovimientosSchema } from "@/lib/validations/movimientos";
@@ -25,13 +26,16 @@ export async function getMovimientosAction(
 export async function createMovimientoAction(
   raw: Record<string, unknown>,
 ): Promise<{ data: Awaited<ReturnType<typeof createMovimiento>> } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = createMovimientoSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
 
   try {
-    const session = await auth();
     if (!session?.user?.id) {
       return { error: "Debes iniciar sesión para crear un movimiento" };
     }

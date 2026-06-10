@@ -13,11 +13,12 @@ const formatter = new Intl.NumberFormat("es-CO", {
 
 interface ArticleCardProps {
   articulo: Articulo;
-  onEdit: (articulo: Articulo) => void;
-  onToggleActivo: (articulo: Articulo) => void;
+  onEdit?: (articulo: Articulo) => void;
+  onToggleActivo?: (articulo: Articulo) => void;
+  canMutate?: boolean;
 }
 
-export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardProps) {
+export function ArticleCard({ articulo, onEdit, onToggleActivo, canMutate = true }: ArticleCardProps) {
   const ganancia = articulo.precio - articulo.costo;
 
   return (
@@ -26,11 +27,12 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
         "flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-5 text-sm shadow-xs transition-all hover:shadow-md",
         !articulo.activo && "opacity-50",
       )}
-      onClick={() => onEdit(articulo)}
-      role="button"
-      tabIndex={0}
+      onClick={() => { if (canMutate && onEdit) onEdit(articulo); }}
+      role={canMutate ? "button" : undefined}
+      tabIndex={canMutate ? 0 : -1}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onEdit(articulo);
+        if (!canMutate) return;
+        if (e.key === "Enter" || e.key === " ") onEdit && onEdit(articulo);
       }}
     >
       {/* Header */}
@@ -50,26 +52,30 @@ export function ArticleCard({ articulo, onEdit, onToggleActivo }: ArticleCardPro
               Inactivo
             </span>
           )}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onEdit(articulo); }}
-            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
-            title="Editar artículo"
-          >
-            <Pencil className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleActivo(articulo); }}
-            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
-            title={articulo.activo ? "Desactivar artículo" : "Reactivar artículo"}
-          >
-            {articulo.activo ? (
-              <PowerOff className="size-3.5" />
-            ) : (
-              <Power className="size-3.5 text-emerald-500" />
-            )}
-          </button>
+          {canMutate && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit && onEdit(articulo); }}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+                title="Editar artículo"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggleActivo && onToggleActivo(articulo); }}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+                title={articulo.activo ? "Desactivar artículo" : "Reactivar artículo"}
+              >
+                {articulo.activo ? (
+                  <PowerOff className="size-3.5" />
+                ) : (
+                  <Power className="size-3.5 text-emerald-500" />
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

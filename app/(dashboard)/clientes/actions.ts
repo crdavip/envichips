@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/authorize";
 import type { Cliente } from "@/lib/generated/prisma/client";
 import {
   getClientes,
@@ -79,6 +80,10 @@ export async function getClienteByIdAction(
 export async function createClienteAction(
   raw: CreateClienteInput,
 ): Promise<{ data: Cliente } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = createClienteSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -104,6 +109,10 @@ export async function updateClienteAction(
   id: string,
   raw: UpdateClienteInput,
 ): Promise<{ data: Cliente } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = updateClienteSchema.safeParse(raw);
   if (!parsed.success) {
     return {

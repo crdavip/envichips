@@ -63,7 +63,22 @@ export async function getResumenDelDia(
   domiciliarioId?: string,
   customDesde?: Date,
   customHasta?: Date,
+  userRole?: string,
 ): Promise<ResumenDelDia> {
+  // If caller is a domiciliario and no domiciliarioId was supplied, return
+  // an empty/zeroed resumen to avoid leaking data across users.
+  if (userRole === "DOMICILIARIO" && !domiciliarioId) {
+    return {
+      ventasHoy: 0,
+      gananciaHoy: 0,
+      pedidosEntregados: 0,
+      pedidosPendientes: 0,
+      stockBajo: { count: 0, productos: [] },
+      sinStock: { count: 0, productos: [] },
+      clientesEnDeuda: 0,
+      totalACobrar: 0,
+    };
+  }
   const { desde, hasta } = getDateRange(dateRange, customDesde, customHasta);
 
   const pedidoWhere: Prisma.PedidoWhereInput = {
@@ -164,6 +179,7 @@ export interface ResumenVentas {
 export async function getVentas(
   dateRange: DateRange = "today",
   domiciliarioId?: string,
+  userRole?: string,
   customDesde?: Date,
   customHasta?: Date,
 ): Promise<{ productos: VentasPorProducto[]; resumen: ResumenVentas }> {
@@ -174,6 +190,11 @@ export async function getVentas(
     estado: "ENTREGADO",
   };
   if (domiciliarioId) pedidoWhere.domiciliarioId = domiciliarioId;
+  // If caller is a domiciliario and no domiciliarioId provided, deny access
+  // by returning empty results.
+  if (userRole === "DOMICILIARIO" && !domiciliarioId) {
+    return { productos: [], resumen: { totalVendido: 0, totalGanancia: 0, masVendido: null, masRentable: null } };
+  }
 
   const pedidos = await db.pedido.findMany({
     where: pedidoWhere,

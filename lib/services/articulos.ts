@@ -23,7 +23,11 @@ export interface ArticuloFilters {
 
 // ─── QUERIES ─────────────────────────────────────
 
-export async function getArticulos(filters?: ArticuloFilters) {
+export async function getArticulos(filters?: ArticuloFilters, userRole?: string) {
+  // If the caller is a domiciliario, services should not expose the full
+  // articles list — return empty set to enforce server-side restriction.
+  if (userRole === "DOMICILIARIO") return [];
+
   const where: Prisma.ArticuloWhereInput = {};
 
   if (filters?.categoria) where.categoria = filters.categoria;

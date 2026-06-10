@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { roleGte } from "@/lib/auth/authorize";
 import { Suspense } from "react";
 import {
   Card,
@@ -205,6 +206,7 @@ async function DashboardStatsCards() {
 export default async function DashboardPage() {
   const session = await auth();
   const userName = session?.user?.name ?? "Usuario";
+  const canQuickActions = roleGte(session?.user, "ADMIN");
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -238,6 +240,7 @@ export default async function DashboardPage() {
       </Suspense>
 
       {/* Quick Actions */}
+      {canQuickActions && (
       <section>
         <h2 className="mb-3 text-lg font-semibold">Acciones rápidas</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -266,6 +269,7 @@ export default async function DashboardPage() {
           })}
         </div>
       </section>
+      )}
     </div>
   );
 }

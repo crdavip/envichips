@@ -11,26 +11,36 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { roleGte, type Rol } from "@/lib/auth/authorize";
 
-const links = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/articulos", label: "Artículos", icon: Package },
-  { href: "/pedidos", label: "Pedidos", icon: ShoppingCart },
-  { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/usuarios", label: "Usuarios", icon: Shield },
-  { href: "/informes", label: "Informes", icon: BarChart3 },
+type NavLink = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  minRole: Rol;
+};
+
+const links: NavLink[] = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, minRole: "DOMICILIARIO" },
+  { href: "/articulos", label: "Artículos", icon: Package, minRole: "ADMIN" },
+  { href: "/pedidos", label: "Pedidos", icon: ShoppingCart, minRole: "DOMICILIARIO" },
+  { href: "/clientes", label: "Clientes", icon: Users, minRole: "ADMIN" },
+  { href: "/usuarios", label: "Usuarios", icon: Shield, minRole: "SUPERADMIN" },
+  { href: "/informes", label: "Informes", icon: BarChart3, minRole: "ADMIN" },
 ];
 
 export type NavLinksProps = {
   isCollapsed?: boolean;
   orientation: "vertical" | "horizontal";
   onNavigate?: () => void;
+  userRole?: string;
 };
 
 export function NavLinks({
   isCollapsed = false,
   orientation,
   onNavigate,
+  userRole,
 }: NavLinksProps) {
   const pathname = usePathname();
 
@@ -41,6 +51,10 @@ export function NavLinks({
     return pathname.startsWith(href);
   };
 
+  const filteredLinks = userRole
+    ? links.filter((link) => roleGte({ rol: userRole }, link.minRole))
+    : links;
+
   return (
     <nav
       className={cn(
@@ -50,7 +64,7 @@ export function NavLinks({
           : "flex-row items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden px-2",
       )}
     >
-      {links.map((link) => {
+      {filteredLinks.map((link) => {
         const active = isActive(link.href);
         const Icon = link.icon;
 

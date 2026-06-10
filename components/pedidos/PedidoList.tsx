@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ShoppingCart, RefreshCw, Search } from "lucide-react";
+import { roleGte } from "@/lib/auth/authorize";
 import {
   getPedidosAction,
 } from "@/app/(dashboard)/pedidos/actions";
@@ -62,11 +63,14 @@ function formatDate(isoString: string): string {
 interface PedidoListProps {
   initialData?: PedidoListItem[];
   initialError?: string | null;
+  userRole?: string;
 }
 
 // ─── Component ──────────────────────────────────────
 
-export function PedidoList({ initialData, initialError }: PedidoListProps) {
+export function PedidoList({ initialData, initialError, userRole }: PedidoListProps) {
+  // only allow create/mutation for ADMIN+
+  const canMutate = roleGte({ rol: userRole }, "ADMIN");
   // ── Data ──
   const [pedidos, setPedidos] = useState<PedidoListItem[]>(initialData ?? []);
   const [loading, setLoading] = useState(!initialData);
@@ -429,16 +433,18 @@ export function PedidoList({ initialData, initialError }: PedidoListProps) {
       </div>
 
       {/* ─── FAB: Nuevo Pedido ─── */}
-      <Link
-        href="/pedidos/create"
-        className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
-        aria-label="Nuevo Pedido"
-      >
-        <ShoppingCart className="size-6" />
-        <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
-          +
-        </span>
-      </Link>
+      {canMutate && (
+        <Link
+          href="/pedidos/create"
+          className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
+          aria-label="Nuevo Pedido"
+        >
+          <ShoppingCart className="size-6" />
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
+            +
+          </span>
+        </Link>
+      )}
     </div>
   );
 }

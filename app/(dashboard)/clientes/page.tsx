@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { roleGte } from "@/lib/auth/authorize";
 import { ClienteList } from "@/components/clientes/ClienteList";
 
 export const metadata: Metadata = {
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
 export default async function ClientesPage() {
   const session = await auth();
 
-  if (!session?.user) {
-    redirect("/login");
+  if (!session?.user || !roleGte(session.user, "ADMIN")) {
+    redirect("/no-autorizado");
   }
 
   const userRole = (session.user as any).rol as string | undefined;

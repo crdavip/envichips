@@ -15,11 +15,12 @@ const formatter = new Intl.NumberFormat("es-CO", {
 
 interface ArticleRowProps {
   articulo: Articulo;
-  onEdit: (articulo: Articulo) => void;
-  onToggleActivo: (articulo: Articulo) => void;
+  onEdit?: (articulo: Articulo) => void;
+  onToggleActivo?: (articulo: Articulo) => void;
+  canMutate?: boolean;
 }
 
-export function ArticleRow({ articulo, onEdit, onToggleActivo }: ArticleRowProps) {
+export function ArticleRow({ articulo, onEdit, onToggleActivo, canMutate = true }: ArticleRowProps) {
   const ganancia = articulo.precio - articulo.costo;
 
   return (
@@ -60,28 +61,32 @@ export function ArticleRow({ articulo, onEdit, onToggleActivo }: ArticleRowProps
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => onEdit(articulo)}
-            title="Editar artículo"
-            className="cursor-pointer transition-opacity hover:opacity-70"
-          >
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => onToggleActivo(articulo)}
-            title={articulo.activo ? "Desactivar artículo" : "Reactivar artículo"}
-            className="cursor-pointer transition-opacity hover:opacity-70"
-          >
-            {articulo.activo ? (
-              <PowerOff className="size-3.5 text-muted-foreground" />
-            ) : (
-              <Power className="size-3.5 text-emerald-500" />
-            )}
-          </Button>
+          {canMutate && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => onEdit && onEdit(articulo)}
+              title="Editar artículo"
+              className="cursor-pointer transition-opacity hover:opacity-70"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          )}
+          {canMutate && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => onToggleActivo && onToggleActivo(articulo)}
+              title={articulo.activo ? "Desactivar artículo" : "Reactivar artículo"}
+              className="cursor-pointer transition-opacity hover:opacity-70"
+            >
+              {articulo.activo ? (
+                <PowerOff className="size-3.5 text-muted-foreground" />
+              ) : (
+                <Power className="size-3.5 text-emerald-500" />
+              )}
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>

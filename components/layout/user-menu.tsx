@@ -4,20 +4,23 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
+import { roleGte } from "@/lib/auth/authorize";
 
 type UserMenuProps = {
   userName: string;
   userEmail: string;
   position: "sidebar-expanded" | "sidebar-collapsed" | "header";
+  userRole?: string;
 };
 
-export function UserMenu({ userName, userEmail, position }: UserMenuProps) {
+export function UserMenu({ userName, userEmail, position, userRole }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const initial = userName?.charAt(0)?.toUpperCase() || "?";
   const displayName = userName || "Usuario";
   const showDetails = position === "sidebar-expanded";
+  const showConfig = !!userRole && roleGte({ rol: userRole }, "SUPERADMIN");
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
@@ -127,14 +130,16 @@ export function UserMenu({ userName, userEmail, position }: UserMenuProps) {
             </div>
           </div>
           <div className="mx-2 my-1 border-t" />
-          <Link
-            href="/configuracion"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors outline-none"
-          >
-            <Settings className="size-4" />
-            Configuración
-          </Link>
+          {showConfig && (
+            <Link
+              href="/configuracion"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors outline-none"
+            >
+              <Settings className="size-4" />
+              Configuración
+            </Link>
+          )}
           <div className="mx-2 my-1 border-t" />
           <button
             type="button"

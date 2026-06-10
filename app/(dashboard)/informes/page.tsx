@@ -10,6 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getResumenDelDia, type DateRange } from "@/lib/services/informes";
 import { formatCOP } from "@/lib/format";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { roleGte } from "@/lib/auth/authorize";
 import {
   DollarSign,
   TrendingUp,
@@ -202,6 +205,12 @@ function MetricSkeletons({ count }: { count: number }) {
 }
 
 export default async function InformesPage() {
+  const session = await auth();
+
+  if (!session?.user || !roleGte(session.user, "ADMIN")) {
+    redirect("/no-autorizado");
+  }
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Page header */}

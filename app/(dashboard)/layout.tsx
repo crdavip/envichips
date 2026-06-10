@@ -19,14 +19,15 @@ export default async function DashboardLayout({
 
   const userName = session.user.name ?? "Usuario";
   const userEmail = session.user.email ?? "";
+  const userRole = (session.user as { rol?: string }).rol;
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        <MobileHeader userName={userName} userEmail={userEmail} />
-        <Sidebar userName={userName} userEmail={userEmail} />
+        <MobileHeader userName={userName} userEmail={userEmail} userRole={userRole} />
+        <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
         <ShellMain>{children}</ShellMain>
-        <BottomNav />
+        <BottomNav userRole={userRole} />
       </div>
     </SidebarProvider>
   );

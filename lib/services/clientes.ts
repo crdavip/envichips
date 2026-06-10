@@ -19,7 +19,10 @@ export interface ClienteFilters {
 
 // ─── QUERIES ───────────────────────────────────────
 
-export async function getClientes(filters?: ClienteFilters) {
+export async function getClientes(filters?: ClienteFilters, userRole?: string) {
+  // Domiciliarios should not receive client lists from services.
+  if (userRole === "DOMICILIARIO") return [];
+
   const where: Prisma.ClienteWhereInput = {};
 
   if (filters?.nombre) {

@@ -29,6 +29,7 @@ import { ArticleFilters } from "@/components/articulos/ArticleFilters";
 import type { ArticleFiltersState } from "@/components/articulos/ArticleFilters";
 import { ArticleCard } from "@/components/articulos/ArticleCard";
 import { ArticleRow } from "@/components/articulos/ArticleRow";
+import { roleGte } from "@/lib/auth/authorize";
 import { ArticleForm } from "@/components/articulos/ArticleForm";
 import { PurchaseModal } from "@/components/articulos/PurchaseModal";
 
@@ -53,7 +54,8 @@ type FormMode = "closed" | "create" | "edit";
 
 // ─── Component ──────────────────────────────────────
 
-export function ArticleList() {
+export function ArticleList({ userRole }: { userRole?: string }) {
+  const canMutate = roleGte({ rol: userRole }, "ADMIN");
   // ── Data ──
   const [articulos, setArticulos] = useState<Articulo[]>([]);
   const [filtros, setFiltros] = useState<ArticleFiltersState>({});
@@ -279,7 +281,7 @@ export function ArticleList() {
                 : "Probá con otros filtros o palabras clave"}
             </p>
           </div>
-          {articulos.length === 0 && (
+          {articulos.length === 0 && canMutate && (
             <Button onClick={handleCreate}>
               <Plus className="size-4" />
               Crear primer artículo
@@ -294,8 +296,9 @@ export function ArticleList() {
           <ArticleCard
             key={articulo.id}
             articulo={articulo}
-            onEdit={handleEdit}
-            onToggleActivo={handleToggleActivo}
+            onEdit={canMutate ? handleEdit : undefined}
+            onToggleActivo={canMutate ? handleToggleActivo : undefined}
+            canMutate={canMutate}
           />
         ))}
       </div>
@@ -327,8 +330,9 @@ export function ArticleList() {
               <ArticleRow
                 key={articulo.id}
                 articulo={articulo}
-                onEdit={handleEdit}
-                onToggleActivo={handleToggleActivo}
+                onEdit={canMutate ? handleEdit : undefined}
+                onToggleActivo={canMutate ? handleToggleActivo : undefined}
+                canMutate={canMutate}
               />
             ))}
           </TableBody>
@@ -371,16 +375,18 @@ export function ArticleList() {
       />
 
       {/* ─── FAB: Nuevo Artículo ─── */}
-      <button
-        onClick={handleCreate}
-        className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
-        aria-label="Nuevo Artículo"
-      >
-        <Package className="size-6" />
-        <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
-          +
-        </span>
-      </button>
+      {canMutate && (
+        <button
+          onClick={handleCreate}
+          className="fixed bottom-20 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-95 lg:bottom-6 lg:right-6"
+          aria-label="Nuevo Artículo"
+        >
+          <Package className="size-6" />
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-bold shadow-sm border border-primary">
+            +
+          </span>
+        </button>
+      )}
     </div>
   );
 }

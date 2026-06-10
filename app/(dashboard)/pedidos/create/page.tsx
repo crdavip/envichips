@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { roleGte } from "@/lib/auth/authorize";
 import { PedidoForm } from "@/components/pedidos/PedidoForm";
 
 export const metadata: Metadata = {
@@ -12,8 +13,8 @@ export const metadata: Metadata = {
 export default async function CreatePedidoPage() {
   const session = await auth();
 
-  if (!session?.user) {
-    redirect("/login");
+  if (!session?.user || !roleGte(session.user, "ADMIN")) {
+    redirect("/no-autorizado");
   }
 
   return (

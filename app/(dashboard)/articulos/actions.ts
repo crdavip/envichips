@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/authorize";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import {
   getArticulos,
@@ -55,6 +56,10 @@ export async function getArticuloByIdAction(
 export async function createArticuloAction(
   raw: CreateArticuloInput,
 ): Promise<{ data: Articulo } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = createArticuloSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
@@ -73,6 +78,10 @@ export async function updateArticuloAction(
   id: string,
   raw: UpdateArticuloInput,
 ): Promise<{ data: Articulo } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = updateArticuloSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
@@ -90,6 +99,10 @@ export async function updateArticuloAction(
 export async function deleteArticuloAction(
   id: string,
 ): Promise<{ data: Articulo } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   try {
     const data = await deleteArticulo(id);
     revalidatePath("/articulos");
@@ -102,6 +115,10 @@ export async function deleteArticuloAction(
 export async function reactivateArticuloAction(
   id: string,
 ): Promise<{ data: Articulo } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   try {
     const data = await reactivateArticulo(id);
     revalidatePath("/articulos");

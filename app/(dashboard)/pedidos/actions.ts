@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/authorize";
 import { db } from "@/lib/db";
 import {
   getPedidos,
@@ -64,6 +65,10 @@ export async function getPedidoByIdAction(
 export async function createPedidoAction(
   raw: Omit<CreatePedidoInput, "creadoPorId">,
 ): Promise<{ data: Awaited<ReturnType<typeof createPedido>> } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   // Parse WITHOUT creadoPorId — it's added after validation
   const parsed = createPedidoSchema.omit({ creadoPorId: true }).safeParse(raw);
   if (!parsed.success) {
@@ -71,7 +76,6 @@ export async function createPedidoAction(
   }
 
   try {
-    const session = await auth();
     if (!session?.user?.id) {
       return { error: "Debes iniciar sesión para crear un pedido" };
     }
