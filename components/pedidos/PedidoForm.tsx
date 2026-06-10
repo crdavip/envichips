@@ -21,21 +21,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  SelectRoot,
-  SelectTrigger,
-  SelectValue,
-  SelectPopup,
-  SelectList,
-  SelectItem,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCOP } from "@/lib/format";
 import {
   createPedidoAction,
   getClientesAction,
-  getDomiciliariosAction,
   getArticulosForPedidoAction,
   getDeudaWarningAction,
 } from "@/app/(dashboard)/pedidos/actions";
@@ -56,11 +47,6 @@ interface ArticleResult {
   presentacion: string;
   precio: number;
   stockActual: number;
-}
-
-interface DomiciliarioResult {
-  id: string;
-  nombre: string;
 }
 
 interface CartItem {
@@ -158,7 +144,6 @@ export function PedidoForm() {
 
   const [descuento, setDescuento] = useState(0);
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
-  const [domiciliarioId, setDomiciliarioId] = useState<string | undefined>();
   const [observaciones, setObservaciones] = useState("");
 
   const [error, setError] = useState<string | null>(null);
@@ -305,19 +290,6 @@ export function PedidoForm() {
     };
   }, [articleQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Step 3: Domiciliarios list + real-time deuda refresh ──
-  const [domiciliarios, setDomiciliarios] = useState<DomiciliarioResult[]>([]);
-
-  useEffect(() => {
-    if (currentStep === 3) {
-      getDomiciliariosAction().then((res) => {
-        if ("data" in res) {
-          setDomiciliarios(res.data);
-        }
-      });
-    }
-  }, [currentStep]);
-
   // Real-time deuda refresh when FIADO + cliente on step 3
   useEffect(() => {
     if (currentStep === 3 && metodoPago === "FIADO" && clienteId) {
@@ -441,7 +413,6 @@ export function PedidoForm() {
         })),
         metodoPago,
         descuento: descuento || 0,
-        domiciliarioId: domiciliarioId || undefined,
         observaciones: observaciones || undefined,
       });
 
@@ -642,9 +613,28 @@ export function PedidoForm() {
                 >
                   <Minus className="size-3.5" />
                 </button>
-                <span className="min-w-[24px] text-center text-sm font-semibold tabular-nums">
-                  {item.cantidad}
-                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={item.cantidad}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") return;
+                    const val = parseInt(raw, 10);
+                    if (!isNaN(val) && val >= 1) {
+                      setItems((prev) =>
+                        prev.map((i) =>
+                          i.articuloId === item.articuloId
+                            ? { ...i, cantidad: val, subtotal: val * i.precio }
+                            : i,
+                        ),
+                      );
+                    }
+                  }}
+                  className="w-12 text-center text-sm font-semibold tabular-nums rounded-md border border-input bg-transparent px-1 py-0.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  aria-label="Editar cantidad"
+                />
                 <button
                   type="button"
                   onClick={() => increaseQty(item.articuloId)}
@@ -1021,47 +1011,6 @@ export function PedidoForm() {
                     )}
                   </>
                 )}
-              </div>
-
-              {/* Domiciliario */}
-              <div className="space-y-2">
-                <Label htmlFor="domiciliario">
-                  Domiciliario (opcional)
-                </Label>
-                <SelectRoot
-                  value={domiciliarioId ?? "__none__"}
-                  onValueChange={(value) =>
-                    setDomiciliarioId(
-                      value === "__none__" || value === null ? undefined : value,
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sin domiciliario (venta directa)">
-                      {domiciliarioId
-                        ? domiciliarios.find((d) => d.id === domiciliarioId)
-                            ?.nombre ?? "Seleccionar"
-                        : "Sin domiciliario (venta directa)"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectPopup>
-                    <SelectList>
-                      <SelectItem value="__none__">
-                        Sin domiciliario (venta directa)
-                      </SelectItem>
-                      {domiciliarios.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectList>
-                  </SelectPopup>
-                </SelectRoot>
-                <p className="text-xs text-muted-foreground">
-                  {domiciliarioId
-                    ? "Con domiciliario asignado → Pedido en PENDIENTE"
-                    : "Sin domiciliario → Pedido en ENTREGADO directo"}
-                </p>
               </div>
 
               {/* Observaciones */}
