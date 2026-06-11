@@ -11,11 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Settings } from "lucide-react";
+import { Settings, Construction } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Configuración | Envichips",
-  description: "Configuración global del negocio",
+  description: "Configuración del sistema",
 };
 
 // ─── Page content ─────────────────────────────────
@@ -28,27 +28,35 @@ async function ConfiguracionContent() {
   }
 
   const userRole = (session.user as { rol?: string }).rol;
-  if (userRole !== "SUPERADMIN") {
+
+  if (userRole === "SUPERADMIN") {
+    const config = await getConfig();
+
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <p className="text-sm text-destructive">
-          No autorizado — solo SuperAdmin puede acceder a esta sección
-        </p>
-      </div>
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>Configuración del Negocio</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ConfigForm initialData={config} />
+        </CardContent>
+      </Card>
     );
   }
 
-  const config = await getConfig();
-
+  // Placeholder para ADMIN y DOMICILIARIO — contenido próximamente
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Configuración del Negocio</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ConfigForm initialData={config} />
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center gap-4 py-20">
+      <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/5 text-primary/40">
+        <Construction className="size-7" />
+      </span>
+      <p className="text-sm font-medium text-foreground">
+        Configuración de usuario
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Próximamente podrás cambiar tu contraseña y preferencias acá
+      </p>
+    </div>
   );
 }
 

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
-import { roleGte } from "@/lib/auth/authorize";
+
 
 type UserMenuProps = {
   userName: string;
@@ -20,7 +20,7 @@ export function UserMenu({ userName, userEmail, position, userRole }: UserMenuPr
   const initial = userName?.charAt(0)?.toUpperCase() || "?";
   const displayName = userName || "Usuario";
   const showDetails = position === "sidebar-expanded";
-  const showConfig = !!userRole && roleGte({ rol: userRole }, "SUPERADMIN");
+  const showConfig = !!userRole; // visible para todos los roles
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
