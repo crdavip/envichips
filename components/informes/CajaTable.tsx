@@ -74,89 +74,166 @@ export function CajaTable({ movimientos }: CajaTableProps) {
   }
 
   return (
-    <div className="rounded-xl border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Fecha</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Categoría</TableHead>
-            <TableHead className="text-right">Monto</TableHead>
-            <TableHead className="hidden sm:table-cell">Descripción</TableHead>
-            <TableHead className="hidden md:table-cell">Método Pago</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pageItems.map((m) => (
-            <TableRow key={m.id}>
-              <TableCell className="whitespace-nowrap">
-                {new Date(m.fecha).toLocaleDateString("es-CO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })}
-              </TableCell>
-              <TableCell>
-                <Badge variant={TIPO_VARIANT[m.tipo] ?? "default"}>
-                  {TIPO_LABEL[m.tipo] ?? m.tipo}
-                </Badge>
-              </TableCell>
-              <TableCell>{CATEGORIA_LABEL[m.categoria] ?? m.categoria}</TableCell>
-              <TableCell className="text-right font-medium tabular-nums">
-                {formatCOP(m.monto)}
-              </TableCell>
-              <TableCell className="hidden max-w-[200px] truncate sm:table-cell text-muted-foreground">
-                {m.descripcion}
-              </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">
-                {METODO_PAGO_LABEL[m.metodoPago] ?? m.metodoPago}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      {movimientos.length > ITEMS_PER_PAGE && (
-        <div className="flex items-center justify-between border-t px-4 py-3">
-          <p className="text-sm text-muted-foreground">
-            {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, movimientos.length)} de{" "}
-            {movimientos.length}
-          </p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="xs"
-              disabled={safePage === 0}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="size-3" />
-            </Button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const start = Math.max(0, safePage - 2);
-              const pageNum = start + i;
-              if (pageNum >= totalPages) return null;
-              return (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === safePage ? "default" : "outline"}
-                  size="xs"
-                  onClick={() => setPage(pageNum)}
-                >
-                  {pageNum + 1}
-                </Button>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="xs"
-              disabled={safePage >= totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <ChevronRight className="size-3" />
-            </Button>
+    <>
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {pageItems.map((m) => (
+          <div key={m.id} className="rounded-xl border bg-card p-4">
+            <div className="font-medium mb-1">
+              {new Date(m.fecha).toLocaleDateString("es-CO", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant={TIPO_VARIANT[m.tipo] ?? "default"}>
+                {TIPO_LABEL[m.tipo] ?? m.tipo}
+              </Badge>
+              <span className="text-sm text-muted-foreground">{CATEGORIA_LABEL[m.categoria] ?? m.categoria}</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-muted-foreground">Monto:</span>
+              <span className="text-sm font-medium tabular-nums">{formatCOP(m.monto)}</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-muted-foreground">Descripción:</span>
+              <span className="text-sm font-medium">{m.descripcion}</span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-muted-foreground">Método:</span>
+              <span className="text-sm font-medium">{METODO_PAGO_LABEL[m.metodoPago] ?? m.metodoPago}</span>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        ))}
+        {movimientos.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, movimientos.length)} de{" "}
+              {movimientos.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={safePage === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="size-3" />
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const start = Math.max(0, safePage - 2);
+                const pageNum = start + i;
+                if (pageNum >= totalPages) return null;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === safePage ? "default" : "outline"}
+                    size="xs"
+                    onClick={() => setPage(pageNum)}
+                  >
+                    {pageNum + 1}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                <ChevronRight className="size-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table + pagination */}
+      <div className="hidden md:block rounded-xl border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead className="text-right">Monto</TableHead>
+              <TableHead className="hidden sm:table-cell">Descripción</TableHead>
+              <TableHead className="hidden md:table-cell">Método Pago</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((m) => (
+              <TableRow key={m.id}>
+                <TableCell className="whitespace-nowrap">
+                  {new Date(m.fecha).toLocaleDateString("es-CO", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={TIPO_VARIANT[m.tipo] ?? "default"}>
+                    {TIPO_LABEL[m.tipo] ?? m.tipo}
+                  </Badge>
+                </TableCell>
+                <TableCell>{CATEGORIA_LABEL[m.categoria] ?? m.categoria}</TableCell>
+                <TableCell className="text-right font-medium tabular-nums">
+                  {formatCOP(m.monto)}
+                </TableCell>
+                <TableCell className="hidden max-w-[200px] truncate sm:table-cell text-muted-foreground">
+                  {m.descripcion}
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-muted-foreground">
+                  {METODO_PAGO_LABEL[m.metodoPago] ?? m.metodoPago}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        {movimientos.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, movimientos.length)} de{" "}
+              {movimientos.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={safePage === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="size-3" />
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const start = Math.max(0, safePage - 2);
+                const pageNum = start + i;
+                if (pageNum >= totalPages) return null;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === safePage ? "default" : "outline"}
+                    size="xs"
+                    onClick={() => setPage(pageNum)}
+                  >
+                    {pageNum + 1}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                <ChevronRight className="size-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

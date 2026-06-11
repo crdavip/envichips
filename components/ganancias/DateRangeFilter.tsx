@@ -62,27 +62,27 @@ export function DateRangeFilter() {
       </div>
 
       {currentRange === "custom" && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
           <div className="flex items-center gap-1">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
               Desde:
             </span>
             <Input
               type="date"
               value={customDesde}
               onChange={(e) => navigate({ desde: e.target.value || null })}
-              className="h-8 w-36"
+              className="h-8 w-full sm:w-36"
             />
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
               Hasta:
             </span>
             <Input
               type="date"
               value={customHasta}
               onChange={(e) => navigate({ hasta: e.target.value || null })}
-              className="h-8 w-36"
+              className="h-8 w-full sm:w-36"
             />
           </div>
         </div>

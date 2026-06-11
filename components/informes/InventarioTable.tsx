@@ -61,53 +61,91 @@ export function InventarioTable({ rows }: InventarioTableProps) {
   const thClass = "cursor-pointer select-none";
 
   return (
-    <div className="rounded-xl border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className={`min-w-[160px] ${thClass}`} onClick={() => toggleSort("nombre")}>
-              Producto <SortIcon field="nombre" sortBy={sortBy} sortDir={sortDir} />
-            </TableHead>
-            <TableHead className={thClass} onClick={() => toggleSort("ingresos")}>
-              Ingresos <SortIcon field="ingresos" sortBy={sortBy} sortDir={sortDir} />
-            </TableHead>
-            <TableHead className={thClass} onClick={() => toggleSort("egresos")}>
-              Egresos <SortIcon field="egresos" sortBy={sortBy} sortDir={sortDir} />
-            </TableHead>
-            <TableHead className={thClass} onClick={() => toggleSort("stockActual")}>
-              Stock Actual <SortIcon field="stockActual" sortBy={sortBy} sortDir={sortDir} />
-            </TableHead>
-            <TableHead className={thClass} onClick={() => toggleSort("stockMinimo")}>
-              Stock Mínimo <SortIcon field="stockMinimo" sortBy={sortBy} sortDir={sortDir} />
-            </TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className={thClass} onClick={() => toggleSort("valorInventario")}>
-              Valor Inventario <SortIcon field="valorInventario" sortBy={sortBy} sortDir={sortDir} />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((r) => {
-            const rowColor = r.estado === "SIN_STOCK" ? "text-red-600" : r.estado === "BAJO" ? "text-amber-600" : "";
-            return (
-              <TableRow key={r.id} className={rowColor}>
-                <TableCell className="font-medium">
-                  {r.nombre}{" "}
-                  <span className="text-xs text-muted-foreground">{r.presentacion}</span>
-                </TableCell>
-                <TableCell>{r.ingresos}</TableCell>
-                <TableCell>{r.egresos}</TableCell>
-                <TableCell className="font-semibold">{r.stockActual}</TableCell>
-                <TableCell>{r.stockMinimo}</TableCell>
-                <TableCell>
-                  <StockBadge estado={r.estado} />
-                </TableCell>
-                <TableCell>{formatCOP(r.valorInventario)}</TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {sorted.map((r) => {
+          const cardColor = r.estado === "SIN_STOCK" ? "text-red-600" : r.estado === "BAJO" ? "text-amber-600" : "";
+          return (
+            <div key={r.id} className={`rounded-xl border bg-card p-4 ${cardColor}`}>
+              <div className="font-medium mb-2">
+                {r.nombre}{" "}
+                <span className="text-xs text-muted-foreground">{r.presentacion}</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-muted-foreground">Stock:</span>
+                <span className="text-sm font-semibold">{r.stockActual} / {r.stockMinimo} und</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-muted-foreground">Estado:</span>
+                <StockBadge estado={r.estado} />
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-muted-foreground">Valor Inv.:</span>
+                <span className="text-sm font-medium">{formatCOP(r.valorInventario)}</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-muted-foreground">Ingresos:</span>
+                <span className="text-sm font-medium">{r.ingresos} und</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-muted-foreground">Egresos:</span>
+                <span className="text-sm font-medium">{r.egresos} und</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block rounded-xl border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className={`min-w-[160px] ${thClass}`} onClick={() => toggleSort("nombre")}>
+                Producto <SortIcon field="nombre" sortBy={sortBy} sortDir={sortDir} />
+              </TableHead>
+              <TableHead className={thClass} onClick={() => toggleSort("ingresos")}>
+                Ingresos <SortIcon field="ingresos" sortBy={sortBy} sortDir={sortDir} />
+              </TableHead>
+              <TableHead className={thClass} onClick={() => toggleSort("egresos")}>
+                Egresos <SortIcon field="egresos" sortBy={sortBy} sortDir={sortDir} />
+              </TableHead>
+              <TableHead className={thClass} onClick={() => toggleSort("stockActual")}>
+                Stock Actual <SortIcon field="stockActual" sortBy={sortBy} sortDir={sortDir} />
+              </TableHead>
+              <TableHead className={thClass} onClick={() => toggleSort("stockMinimo")}>
+                Stock Mínimo <SortIcon field="stockMinimo" sortBy={sortBy} sortDir={sortDir} />
+              </TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className={thClass} onClick={() => toggleSort("valorInventario")}>
+                Valor Inventario <SortIcon field="valorInventario" sortBy={sortBy} sortDir={sortDir} />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((r) => {
+              const rowColor = r.estado === "SIN_STOCK" ? "text-red-600" : r.estado === "BAJO" ? "text-amber-600" : "";
+              return (
+                <TableRow key={r.id} className={rowColor}>
+                  <TableCell className="font-medium">
+                    {r.nombre}{" "}
+                    <span className="text-xs text-muted-foreground">{r.presentacion}</span>
+                  </TableCell>
+                  <TableCell>{r.ingresos}</TableCell>
+                  <TableCell>{r.egresos}</TableCell>
+                  <TableCell className="font-semibold">{r.stockActual}</TableCell>
+                  <TableCell>{r.stockMinimo}</TableCell>
+                  <TableCell>
+                    <StockBadge estado={r.estado} />
+                  </TableCell>
+                  <TableCell>{formatCOP(r.valorInventario)}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }
