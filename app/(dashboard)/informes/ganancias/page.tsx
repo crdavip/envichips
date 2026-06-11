@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { TrendingUp } from "lucide-react";
+import { ArrowLeft, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { getGanancias, type DateRange } from "@/lib/services/informes";
 import { GananciasCards } from "@/components/informes/GananciasCards";
 import { DateRangeFilter } from "@/components/ganancias/DateRangeFilter";
@@ -47,6 +48,13 @@ async function GananciasContent({
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex items-center gap-3">
+        <Link
+          href="/informes"
+          className="flex size-10 items-center justify-center rounded-lg border bg-card text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0"
+          aria-label="Volver a Informes"
+        >
+          <ArrowLeft className="size-5" />
+        </Link>
         <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <TrendingUp className="size-5" />
         </span>
