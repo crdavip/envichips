@@ -2,18 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/authorize";
 import { upsertConfig } from "@/lib/services/configuracion";
 import { configSchema } from "@/lib/validations/configuracion";
 import type { ConfigInput } from "@/lib/validations/configuracion";
-
-// ─── HELPERS ──────────────────────────────────────
-
-function checkSuperAdmin(rol: string | undefined): string | null {
-  if (rol !== "SUPERADMIN") {
-    return "No autorizado — solo SuperAdmin";
-  }
-  return null;
-}
 
 // ─── MUTATIONS ────────────────────────────────────
 
@@ -21,9 +13,7 @@ export async function upsertConfigAction(
   raw: ConfigInput,
 ): Promise<{ data: Awaited<ReturnType<typeof upsertConfig>> } | { error: string }> {
   const session = await auth();
-  const authError = checkSuperAdmin(
-    (session?.user as { rol?: string })?.rol,
-  );
+  const authError = requireRole("SUPERADMIN", session?.user);
   if (authError) return { error: authError };
 
   const parsed = configSchema.safeParse(raw);

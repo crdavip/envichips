@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/auth/authorize";
 import {
   createUsuario,
   updateUsuario,
@@ -17,24 +18,13 @@ import type {
   UpdateUsuarioInput,
 } from "@/lib/validations/usuarios";
 
-// ─── HELPERS ──────────────────────────────────────
-
-function checkSuperAdmin(rol: string | undefined): string | null {
-  if (rol !== "SUPERADMIN") {
-    return "No autorizado — solo SuperAdmin";
-  }
-  return null;
-}
-
 // ─── MUTATIONS ────────────────────────────────────
 
 export async function createUsuarioAction(
   raw: CreateUsuarioInput,
 ): Promise<{ data: Awaited<ReturnType<typeof createUsuario>> } | { error: string }> {
   const session = await auth();
-  const authError = checkSuperAdmin(
-    (session?.user as { rol?: string })?.rol,
-  );
+  const authError = requireRole("SUPERADMIN", session?.user);
   if (authError) return { error: authError };
 
   const parsed = createUsuarioSchema.safeParse(raw);
@@ -69,9 +59,7 @@ export async function updateUsuarioAction(
   raw: UpdateUsuarioInput,
 ): Promise<{ data: Awaited<ReturnType<typeof updateUsuario>> } | { error: string }> {
   const session = await auth();
-  const authError = checkSuperAdmin(
-    (session?.user as { rol?: string })?.rol,
-  );
+  const authError = requireRole("SUPERADMIN", session?.user);
   if (authError) return { error: authError };
 
   const parsed = updateUsuarioSchema.safeParse(raw);
@@ -99,9 +87,7 @@ export async function toggleUsuarioAction(
   id: string,
 ): Promise<{ data: Awaited<ReturnType<typeof toggleUsuarioActivo>> } | { error: string }> {
   const session = await auth();
-  const authError = checkSuperAdmin(
-    (session?.user as { rol?: string })?.rol,
-  );
+  const authError = requireRole("SUPERADMIN", session?.user);
   if (authError) return { error: authError };
 
   try {

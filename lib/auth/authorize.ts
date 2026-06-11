@@ -11,12 +11,13 @@ export const HIERARCHY: Record<Rol, number> = {
 };
 
 /**
- * Verifica que el usuario tenga al menos uno de los roles requeridos.
+ * Verifica que el usuario tenga un nivel jerárquico >= al mínimo requerido.
+ * Usa HIERARCHY: SUPERADMIN(3) > ADMIN(2) > DOMICILIARIO(1).
  * Retorna string de error si no está autorizado, null si autorizado.
  *
  * @example
  * ```ts
- * const authError = requireRole("ADMIN", session?.user);
+ * const authError = requireRole("ADMIN", session?.user);  // ADMIN y SUPERADMIN pasan
  * if (authError) return { error: authError };
  * ```
  */
@@ -29,9 +30,14 @@ export function requireRole(
   }
 
   const roles = Array.isArray(required) ? required : [required];
-  const userRol = user.rol as Rol;
+  const userLevel = HIERARCHY[user.rol as Rol];
+  if (userLevel === undefined) {
+    return "Debe iniciar sesión";
+  }
 
-  if (!roles.includes(userRol)) {
+  // Toma el nivel mínimo entre los roles requeridos
+  const minLevel = Math.min(...roles.map((r) => HIERARCHY[r]));
+  if (userLevel < minLevel) {
     return "Acción no permitida para el rol actual";
   }
 
