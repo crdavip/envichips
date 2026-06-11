@@ -11,6 +11,12 @@ export const EstadoPedidoEnum = z.enum([
   "CANCELADO",
 ]);
 
+export const EstadoCobroEnum = z.enum([
+  "PENDIENTE",
+  "COBRADO_PARCIAL",
+  "COBRADO",
+]);
+
 // ─── SCHEMAS ───────────────────────────────────────
 
 export const PedidoItemInput = z.object({
@@ -36,7 +42,7 @@ export const updateEstadoSchema = z.object({
   motivo: z.string().min(1, "El motivo es requerido").optional(),
   dineroCobrado: z.boolean().optional(),
   montoCobrado: z.number().int().min(0).optional(),
-  cambiadoPorId: z.string().uuid(),
+  cambiadoPorId: z.string().uuid().optional(),
 });
 
 export const cancelarPedidoSchema = z.object({

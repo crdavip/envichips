@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import type {
   EstadoPedido,
+  EstadoCobro,
   Prisma,
 } from "@/lib/generated/prisma/client";
 import type {
@@ -62,14 +63,23 @@ export async function getPedidos(
 ) {
   const where: Prisma.PedidoWhereInput = {};
 
-  // Role-aware: domiciliario only sees their TODAY's pedidos
   if (user?.rol === "DOMICILIARIO") {
-    where.domiciliarioId = user.id;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    where.fecha = { gte: today, lt: tomorrow };
+    // DOMICILIARIO sees: available pedidos (PENDIENTE, unassigned) + their own
+    where.OR = [
+      { estado: "PENDIENTE", domiciliarioId: null },
+      { domiciliarioId: user.id },
+    ];
+
+    // Apply date filters only if explicitly provided — no "today only" default
+    if (filtros?.fechaDesde || filtros?.fechaHasta) {
+      where.fecha = {};
+      if (filtros.fechaDesde) where.fecha.gte = new Date(filtros.fechaDesde);
+      if (filtros.fechaHasta) {
+        const end = new Date(filtros.fechaHasta);
+        end.setHours(23, 59, 59, 999);
+        where.fecha.lte = end;
+      }
+    }
   } else {
     // Admin/SuperAdmin: apply optional filters
     if (filtros?.estado) where.estado = filtros.estado;
@@ -134,8 +144,13 @@ export async function getPedidoById(id: string) {
 // ─── SEQUENCE ──────────────────────────────────────
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  PENDIENTE: ["EN_CAMINO", "CANCELADO"],
+  PENDIENTE: ["EN_CAMINO", "ENTREGADO", "CANCELADO"],
   EN_CAMINO: ["ENTREGADO", "CANCELADO"],
+};
+
+const DOMICILIARIO_TRANSITIONS: Record<string, string[]> = {
+  PENDIENTE: ["EN_CAMINO"],
+  EN_CAMINO: ["ENTREGADO"],
 };
 
 const SEQUENCE_TYPE = "PEDIDO" as const;
@@ -189,9 +204,8 @@ export async function createPedido(data: CreatePedidoInput) {
     const descuento = data.descuento ?? 0;
     const total = subtotal - descuento;
 
-    // 4. Determine initial estado
-    // Venta directa (sin domiciliario) → ENTREGADO
-    const estado: EstadoPedido = data.domiciliarioId ? "PENDIENTE" : "ENTREGADO";
+    // 4. Always create as PENDIENTE (regardless of domiciliarioId)
+    const estado: EstadoPedido = "PENDIENTE";
 
     // 5. Create Pedido with items
     const pedido = await tx.pedido.create({
@@ -217,36 +231,16 @@ export async function createPedido(data: CreatePedidoInput) {
       },
     });
 
-    // 6. If direct sale (ENTREGADO): decrement stock
-    if (estado === "ENTREGADO") {
-      for (const item of itemsData) {
-        await tx.articulo.update({
-          where: { id: item.articuloId },
-          data: { stockActual: { increment: -item.cantidad } },
-        });
-      }
-
-      // Register state transition for audit trail
-      await tx.historialEstado.create({
-        data: {
-          pedidoId: pedido.id,
-          estadoAntes: "PENDIENTE",
-          estadoDespues: "ENTREGADO",
-          cambiadoPorId: data.creadoPorId,
-          motivo: "Venta directa",
-        },
-      });
-    } else {
-      // Register initial PENDIENTE state
-      await tx.historialEstado.create({
-        data: {
-          pedidoId: pedido.id,
-          estadoAntes: "PENDIENTE",
-          estadoDespues: "PENDIENTE",
-          cambiadoPorId: data.creadoPorId,
-        },
-      });
-    }
+    // 6. Register initial PENDIENTE state (stock decrement happens on ENTREGADO transition)
+    await tx.historialEstado.create({
+      data: {
+        pedidoId: pedido.id,
+        estadoAntes: "PENDIENTE",
+        estadoDespues: "PENDIENTE",
+        cambiadoPorId: data.creadoPorId,
+        motivo: "Pedido creado",
+      },
+    });
 
     return pedido;
   });
@@ -254,15 +248,37 @@ export async function createPedido(data: CreatePedidoInput) {
 
 // ─── STATE TRANSITIONS ────────────────────────────
 
-export async function actualizarEstado(id: string, data: UpdateEstadoInput) {
+export async function actualizarEstado(
+  id: string,
+  data: UpdateEstadoInput,
+  user: { id: string; rol: string },
+) {
   return db.$transaction(async (tx) => {
-    // 1. Read current pedido with items
+    // 1. Read current pedido with items + domiciliarioId
     const pedido = await tx.pedido.findUniqueOrThrow({
       where: { id },
       include: { items: true },
     });
 
-    // 2. Validate transition is allowed
+    // 2. Role-aware permission check
+    if (user.rol === "DOMICILIARIO") {
+      // DOMICILIARIO can only transition their own assigned pedidos
+      if (pedido.domiciliarioId !== user.id) {
+        throw new Error("No puedes modificar un pedido que no está asignado a ti");
+      }
+
+      // DOMICILIARIO only has limited transitions
+      const allowedForRole = DOMICILIARIO_TRANSITIONS[pedido.estado];
+      if (!allowedForRole?.includes(data.estado as string)) {
+        throw new Error(
+          `Transición no permitida para tu rol: ${pedido.estado} → ${data.estado}`,
+        );
+      }
+    } else if (user.rol !== "ADMIN" && user.rol !== "SUPERADMIN") {
+      throw new Error("Rol no autorizado para cambiar estados");
+    }
+
+    // 3. Validate transition is allowed (general)
     const allowed = ALLOWED_TRANSITIONS[pedido.estado];
     if (!allowed?.includes(data.estado as string)) {
       throw new Error(
@@ -270,12 +286,12 @@ export async function actualizarEstado(id: string, data: UpdateEstadoInput) {
       );
     }
 
-    // 3. Validate motivo for cancellation
+    // 4. Validate motivo for cancellation
     if (data.estado === "CANCELADO" && !data.motivo) {
       throw new Error("Motivo requerido para cancelar el pedido");
     }
 
-    // 4. Build update payload
+    // 5. Build update payload
     const updateData: Prisma.PedidoUpdateInput = {
       estado: data.estado,
     };
@@ -285,6 +301,17 @@ export async function actualizarEstado(id: string, data: UpdateEstadoInput) {
     }
     if (data.montoCobrado !== undefined) {
       updateData.montoCobrado = data.montoCobrado;
+    }
+    // Derive estadoCobro from metodoPago when ENTREGADO
+    // (UI sends dineroCobrado boolean, service derives the explicit estadoCobro)
+    if (data.estado === "ENTREGADO") {
+      if (pedido.metodoPago === "EFECTIVO" && data.dineroCobrado) {
+        updateData.estadoCobro = "COBRADO_PARCIAL" as EstadoCobro;
+      } else if (pedido.metodoPago === "TRANSFERENCIA") {
+        updateData.estadoCobro = "COBRADO_PARCIAL" as EstadoCobro;
+      } else {
+        updateData.estadoCobro = "PENDIENTE" as EstadoCobro;
+      }
     }
 
     const updated = await tx.pedido.update({
@@ -297,7 +324,22 @@ export async function actualizarEstado(id: string, data: UpdateEstadoInput) {
       },
     });
 
-    // 5. If ENTREGADO: decrement stock for each item
+    // 6. Stock sufficiency check before ENTREGADO
+    if (data.estado === "ENTREGADO") {
+      for (const item of pedido.items) {
+        const articulo = await tx.articulo.findUniqueOrThrow({
+          where: { id: item.articuloId },
+          select: { stockActual: true, nombre: true },
+        });
+        if (articulo.stockActual < item.cantidad) {
+          throw new Error(
+            `Stock insuficiente para ${articulo.nombre}: disponible ${articulo.stockActual}, requerido ${item.cantidad}`,
+          );
+        }
+      }
+    }
+
+    // 7. If ENTREGADO: decrement stock for each item
     if (data.estado === "ENTREGADO") {
       for (const item of pedido.items) {
         await tx.articulo.update({
@@ -309,13 +351,13 @@ export async function actualizarEstado(id: string, data: UpdateEstadoInput) {
       // NOTE: deuda calculada en tiempo real via clientes service (no se almacena)
     }
 
-    // 6. Create HistorialEstado
+    // 8. Create HistorialEstado
     await tx.historialEstado.create({
       data: {
         pedidoId: id,
         estadoAntes: pedido.estado,
         estadoDespues: data.estado as EstadoPedido,
-        cambiadoPorId: data.cambiadoPorId,
+        cambiadoPorId: user.id,
         motivo: data.motivo ?? null,
       },
     });
@@ -424,25 +466,94 @@ export async function asignarDomiciliario(
   });
 }
 
+// ─── AUTO-ASIGNACIÓN (TOMAR PEDIDO) ────────────────
+
+export async function tomarPedido(id: string, domiciliarioId: string) {
+  return db.$transaction(async (tx) => {
+    // 1. Validate: user must exist and be active DOMICILIARIO
+    const usuario = await tx.user.findUnique({
+      where: { id: domiciliarioId },
+      select: { id: true, rol: true, activo: true },
+    });
+
+    if (!usuario || usuario.rol !== "DOMICILIARIO" || !usuario.activo) {
+      throw new Error("Usuario no autorizado para tomar pedidos");
+    }
+
+    // 2. Atomic conditional update: only succeeds if pedido is PENDIENTE and unassigned
+    //    Transitions to EN_CAMINO directly — tomar = salir a entregar
+    const result = await tx.pedido.updateMany({
+      where: {
+        id,
+        domiciliarioId: null,
+        estado: "PENDIENTE",
+      },
+      data: {
+        domiciliarioId,
+        estado: "EN_CAMINO",
+      },
+    });
+
+    if (result.count === 0) {
+      throw new Error("Pedido no disponible");
+    }
+
+    // 3. Register PENDIENTE → EN_CAMINO in historial
+    await tx.historialEstado.create({
+      data: {
+        pedidoId: id,
+        estadoAntes: "PENDIENTE",
+        estadoDespues: "EN_CAMINO",
+        cambiadoPorId: domiciliarioId,
+        motivo: "Domiciliario tomó el pedido",
+      },
+    });
+
+    return tx.pedido.findUnique({
+      where: { id },
+      include: { cliente: true, domiciliario: true, items: true },
+    });
+  });
+}
+
 // ─── PAYMENT CONFIRMATION ─────────────────────────
 
-export async function confirmarCobroAdmin(id: string) {
+export async function confirmarCobroAdmin(id: string, cambiadoPorId: string) {
   return db.$transaction(async (tx) => {
     const pedido = await tx.pedido.findUniqueOrThrow({
       where: { id },
-      select: { id: true, pagoEntregadoAdmin: true },
+      select: { id: true, pagoEntregadoAdmin: true, estado: true },
     });
 
     if (pedido.pagoEntregadoAdmin) {
       throw new Error("El cobro de este pedido ya fue confirmado");
     }
 
-    return tx.pedido.update({
+    const updated = await tx.pedido.update({
       where: { id },
       data: {
         pagoEntregadoAdmin: true,
         pagoEntregadoEn: new Date(),
+        estadoCobro: "COBRADO",
+      },
+      include: {
+        items: true,
+        cliente: true,
+        domiciliario: true,
       },
     });
+
+    // Register cobro confirmation in historial
+    await tx.historialEstado.create({
+      data: {
+        pedidoId: id,
+        estadoAntes: pedido.estado,
+        estadoDespues: pedido.estado,
+        cambiadoPorId,
+        motivo: "Cobro confirmado por administrador",
+      },
+    });
+
+    return updated;
   });
 }

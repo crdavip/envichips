@@ -12,6 +12,7 @@ import {
   cancelarPedido,
   confirmarCobroAdmin,
   asignarDomiciliario,
+  tomarPedido,
   validateFiadoDebt,
 } from "@/lib/services/pedidos";
 import { getDeudaCliente } from "@/lib/services/clientes";
@@ -115,8 +116,7 @@ export async function updateEstadoAction(
   raw: Omit<UpdateEstadoInput, "cambiadoPorId">,
 ): Promise<{ data: Awaited<ReturnType<typeof actualizarEstado>> } | { error: string }> {
   const session = await auth();
-  const authError = requireRole("ADMIN", session?.user);
-  if (authError) return { error: authError };
+  if (!session?.user) return { error: "No autenticado" };
 
   const parsed = updateEstadoSchema.safeParse(raw);
   if (!parsed.success) {
@@ -124,14 +124,37 @@ export async function updateEstadoAction(
   }
 
   try {
-    const data = await actualizarEstado(id, {
-      ...parsed.data,
-      cambiadoPorId: session!.user!.id,
-    } as UpdateEstadoInput);
+    const user = session.user as { id: string; rol: string };
+    const data = await actualizarEstado(
+      id,
+      {
+        ...parsed.data,
+        cambiadoPorId: session.user.id,
+      } as UpdateEstadoInput,
+      { id: user.id, rol: user.rol },
+    );
     revalidatePath("/pedidos");
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al actualizar el estado" };
+  }
+}
+
+export async function tomarPedidoAction(
+  id: string,
+): Promise<{ data: Awaited<ReturnType<typeof tomarPedido>> } | { error: string }> {
+  const session = await auth();
+  if (!session?.user) return { error: "No autenticado" };
+
+  const authError = requireRole("DOMICILIARIO", session?.user);
+  if (authError) return { error: authError };
+
+  try {
+    const data = await tomarPedido(id, (session.user as { id: string }).id);
+    revalidatePath("/pedidos");
+    return { data };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Error al tomar el pedido" };
   }
 }
 
@@ -170,7 +193,7 @@ export async function confirmarCobroAdminAction(
   }
 
   try {
-    const data = await confirmarCobroAdmin(id);
+    const data = await confirmarCobroAdmin(id, session!.user!.id);
     revalidatePath("/pedidos");
     return { data };
   } catch (err) {
