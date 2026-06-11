@@ -93,6 +93,7 @@ export interface PedidoData {
   total: number;
   dineroCobrado: boolean | null;
   montoCobrado: number | null;
+  estadoCobro: string;
   pagoEntregadoAdmin: boolean;
   pagoEntregadoEn: string | null;
   observaciones: string | null;
@@ -161,6 +162,16 @@ function TimelineEntry({
   entry: HistorialEntry;
   isLast: boolean;
 }) {
+  // Derive semantic label when estadoAntes === estadoDespues (creation or cobro confirmation)
+  const sameState = entry.estadoAntes === entry.estadoDespues;
+  const displayLabel = sameState
+    ? entry.motivo?.includes("creado")
+      ? "Creado → Pendiente"
+      : entry.motivo?.includes("Cobro")
+        ? "Entregado → Pagado"
+        : null
+    : null;
+
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
@@ -179,13 +190,13 @@ function TimelineEntry({
       </div>
       <div className={isLast ? "pb-0" : "pb-4"}>
         <p className="text-sm font-medium">
-          {estadoLabel(entry.estadoAntes)} → {estadoLabel(entry.estadoDespues)}
+          {displayLabel ?? `${estadoLabel(entry.estadoAntes)} → ${estadoLabel(entry.estadoDespues)}`}
         </p>
         <p className="text-xs text-muted-foreground">
           {entry.cambiadoPor?.nombre ?? "Sistema"} ·{" "}
           {formatFechaCorta(entry.creadoEn)}
         </p>
-        {entry.motivo && (
+        {entry.motivo && !displayLabel && (
           <p className="mt-0.5 text-xs text-muted-foreground">
             Motivo: {entry.motivo}
           </p>
@@ -254,7 +265,7 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
 
   const puedeConfirmarCobro =
     pedido.estado === "ENTREGADO" &&
-    !pedido.pagoEntregadoAdmin &&
+    pedido.estadoCobro === "COBRADO_PARCIAL" &&
     isAdmin;
 
   const puedeCambiarDomiciliario =
@@ -398,8 +409,13 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
               size="sm"
               variant="default"
               onClick={() => {
-                setDineroCobrado(true);
-                setMontoCobrado(pedido.total.toString());
+                if (pedido.metodoPago === "FIADO") {
+                  setDineroCobrado(false);
+                  setMontoCobrado("0");
+                } else {
+                  setDineroCobrado(true);
+                  setMontoCobrado(pedido.total.toString());
+                }
                 setError(null);
                 setShowEntregarModal(true);
               }}
@@ -604,25 +620,52 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
             <p className="text-sm text-muted-foreground">
               Pedido cancelado &mdash; no aplica cobro.
             </p>
-          ) : pedido.dineroCobrado ? (
-            <div className="flex items-center gap-2">
-              <DollarSign className="size-5 text-emerald-600" />
-              <span className="text-sm font-medium">
-                Cobrado: {formatCOP(pedido.montoCobrado ?? 0)}
-              </span>
-              {pedido.pagoEntregadoAdmin && (
-                <Badge variant="success">Recibido por administrador</Badge>
-              )}
-            </div>
-          ) : pedido.estado === "ENTREGADO" && !pedido.dineroCobrado ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-amber-600">
-                Pendiente de cobro &mdash; entregado sin recibir pago
-              </span>
-            </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">Pendiente de cobro</Badge>
+            <div className="space-y-3">
+              {/* EstadoCobro badge */}
+              <div className="flex items-center gap-3">
+                {pedido.estadoCobro === "COBRADO" ? (
+                  <>
+                    <DollarSign className="size-5 text-emerald-600" />
+                    <span className="text-sm font-medium text-emerald-600">
+                      Cobrado &mdash;{" "}
+                      {formatCOP(pedido.montoCobrado ?? pedido.total)}
+                    </span>
+                    <Badge variant="success">Recibido por administrador</Badge>
+                  </>
+                ) : pedido.estadoCobro === "COBRADO_PARCIAL" ? (
+                  <>
+                    <DollarSign className="size-5 text-amber-600" />
+                    <span className="text-sm font-medium text-amber-600">
+                      Cobrado por domiciliario &mdash; pendiente de confirmación
+                    </span>
+                    <Badge variant="warning">Por confirmar</Badge>
+                  </>
+                ) : pedido.metodoPago === "FIADO" ? (
+                  <>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Fiado &mdash; pasa a deuda del cliente
+                    </span>
+                    <Badge variant="secondary">Fiado</Badge>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">Pendiente de cobro</Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment method info */}
+              <div className="text-xs text-muted-foreground">
+                Método de pago:{" "}
+                {pedido.metodoPago === "EFECTIVO"
+                  ? "Efectivo"
+                  : pedido.metodoPago === "TRANSFERENCIA"
+                    ? "Transferencia"
+                    : pedido.metodoPago === "FIADO"
+                      ? "Fiado"
+                      : pedido.metodoPago}
+              </div>
             </div>
           )}
         </CardContent>
@@ -687,56 +730,106 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Dinero cobrado toggle */}
-            <div className="space-y-2">
-              <Label>¿Recibiste el dinero del cliente?</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={dineroCobrado ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setDineroCobrado(true);
-                    setMontoCobrado(pedido.total.toString());
-                  }}
-                >
-                  Sí
-                </Button>
-                <Button
-                  type="button"
-                  variant={!dineroCobrado ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setDineroCobrado(false);
-                    setMontoCobrado("0");
-                  }}
-                >
-                  No
-                </Button>
+          {pedido.metodoPago === "FIADO" ? (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted/50 p-4 text-sm">
+                <p className="font-medium">Este pedido es FIADO</p>
+                <p className="text-muted-foreground mt-1">
+                  El cobro se registra como deuda del cliente. No necesitás
+                  recibir el dinero ahora.
+                </p>
               </div>
             </div>
-
-            {/* Monto cobrado */}
-            <div className="space-y-2">
-              <Label htmlFor="montoCobrado">¿Cuánto te pagaron?</Label>
-              <Input
-                id="montoCobrado"
-                type="number"
-                min={0}
-                disabled={!dineroCobrado}
-                value={montoCobrado}
-                onChange={(e) => setMontoCobrado(e.target.value)}
-                placeholder="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Monto en COP &middot;{" "}
-                {dineroCobrado
-                  ? "Ingresa el monto que recibiste del cliente"
-                  : "No se registra cobro porque no recibiste dinero"}
-              </p>
+          ) : pedido.metodoPago === "TRANSFERENCIA" ? (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted/50 p-4 text-sm">
+                <p className="font-medium">
+                  Este pedido es por TRANSFERENCIA
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Confirmá si el cliente ya realizó la transferencia.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>¿El cliente realizó la transferencia?</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={dineroCobrado ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setDineroCobrado(true);
+                      setMontoCobrado(pedido.total.toString());
+                    }}
+                  >
+                    Sí
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={!dineroCobrado ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setDineroCobrado(false);
+                      setMontoCobrado("0");
+                    }}
+                  >
+                    Todavía no
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Dinero cobrado toggle */}
+              <div className="space-y-2">
+                <Label>¿Recibiste el dinero del cliente?</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={dineroCobrado ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setDineroCobrado(true);
+                      setMontoCobrado(pedido.total.toString());
+                    }}
+                  >
+                    Sí
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={!dineroCobrado ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setDineroCobrado(false);
+                      setMontoCobrado("0");
+                    }}
+                  >
+                    No
+                  </Button>
+                </div>
+              </div>
+
+              {/* Monto cobrado */}
+              <div className="space-y-2">
+                <Label htmlFor="montoCobrado">¿Cuánto te pagaron?</Label>
+                <Input
+                  id="montoCobrado"
+                  type="number"
+                  min={0}
+                  disabled={!dineroCobrado}
+                  value={montoCobrado}
+                  onChange={(e) => setMontoCobrado(e.target.value)}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Monto en COP &middot;{" "}
+                  {dineroCobrado
+                    ? "Ingresa el monto que recibiste del cliente"
+                    : "No se registra cobro porque no recibiste dinero"}
+                </p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEntregarModal(false)}>

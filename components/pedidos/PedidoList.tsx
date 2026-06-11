@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ShoppingCart, RefreshCw, Search } from "lucide-react";
+import { ShoppingCart, RefreshCw, Search, Package } from "lucide-react";
 import { roleGte } from "@/lib/auth/authorize";
 import {
   getPedidosAction,
@@ -28,6 +28,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { PedidoStatusBadge } from "@/components/pedidos/PedidoStatusBadge";
+import { TomarPedidoButton } from "@/components/pedidos/TomarPedidoButton";
 import { formatCOP } from "@/lib/format";
 
 // ─── Types ──────────────────────────────────────────
@@ -187,6 +188,257 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
           <RefreshCw className="size-4" />
           Reintentar
         </Button>
+      </div>
+    );
+  }
+
+  // ── DOMICILIARIO: split pedidos into disponibles / propios ──
+  const disponibles = useMemo(
+    () => sorted.filter((p) => p.estado === "PENDIENTE" && !p.domiciliario),
+    [sorted],
+  );
+  const misPedidos = useMemo(
+    () => sorted.filter((p) => p.domiciliario),
+    [sorted],
+  );
+
+  const [domTab, setDomTab] = useState<"disponibles" | "mios">("disponibles");
+
+  if (userRole === "DOMICILIARIO") {
+    return (
+      <div className="space-y-6">
+        {/* ─── Header ─── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <ShoppingCart className="size-5" />
+            </span>
+            <div>
+              <h1 className="text-xl font-semibold">Pedidos</h1>
+              <p className="text-sm text-muted-foreground">
+                {sorted.length} pedido{sorted.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Tabs ─── */}
+        <div className="flex gap-2 border-b pb-2">
+          <button
+            type="button"
+            onClick={() => setDomTab("disponibles")}
+            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
+              domTab === "disponibles"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Disponibles ({disponibles.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setDomTab("mios")}
+            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
+              domTab === "mios"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Mis pedidos ({misPedidos.length})
+          </button>
+        </div>
+
+        {/* ─── Error ─── */}
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+            <span>{error}</span>
+            <Button variant="ghost" size="xs" onClick={() => fetchPedidos()} disabled={fetching}>
+              <RefreshCw className="size-3" />
+              Reintentar
+            </Button>
+          </div>
+        )}
+
+        {/* ─── Disponibles Tab ─── */}
+        {domTab === "disponibles" && (
+          <>
+            {disponibles.length === 0 && !fetching ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-20">
+                <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/5 text-primary/40">
+                  <Package className="size-7" />
+                </span>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">No hay pedidos disponibles</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Todos los pedidos Pendientes ya fueron asignados
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Card view (mobile) */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+                  {disponibles.map((pedido) => (
+                    <Link
+                      key={pedido.id}
+                      href={`/pedidos/${pedido.id}`}
+                      className="group/card rounded-xl border bg-card p-4 text-sm text-card-foreground shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-mono text-xs font-semibold text-muted-foreground">
+                            {pedido.numeroPedido}
+                          </p>
+                          <p className="mt-1 font-medium leading-tight">
+                            {pedido.cliente?.nombreCompleto ?? "Venta rápida"}
+                          </p>
+                        </div>
+                        <PedidoStatusBadge estado={pedido.estado} />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between border-t pt-3">
+                        <div className="space-y-0.5">
+                          <p className="text-lg font-bold tracking-tight">{formatCOP(pedido.total)}</p>
+                        </div>
+                        <TomarPedidoButton pedidoId={pedido.id} />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Table view (desktop) */}
+                <div className="hidden lg:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Pedido</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {disponibles.map((pedido) => (
+                        <TableRow key={pedido.id}>
+                          <TableCell>
+                            <Link href={`/pedidos/${pedido.id}`} className="font-mono text-xs font-semibold text-muted-foreground hover:text-foreground">
+                              {pedido.numeroPedido}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <Link href={`/pedidos/${pedido.id}`} className="font-medium hover:underline">
+                              {pedido.cliente?.nombreCompleto ?? "Venta rápida"}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="font-medium">{formatCOP(pedido.total)}</TableCell>
+                          <TableCell>
+                            <Link href={`/pedidos/${pedido.id}`}>
+                              <PedidoStatusBadge estado={pedido.estado} />
+                            </Link>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <TomarPedidoButton pedidoId={pedido.id} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ─── Mis Pedidos Tab ─── */}
+        {domTab === "mios" && (
+          <>
+            {misPedidos.length === 0 && !fetching ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-20">
+                <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/5 text-primary/40">
+                  <ShoppingCart className="size-7" />
+                </span>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">No tienes pedidos asignados</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Tomá un pedido disponible para comenzar
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Card view (mobile) */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+                  {misPedidos.map((pedido) => (
+                    <Link
+                      key={pedido.id}
+                      href={`/pedidos/${pedido.id}`}
+                      className="group/card rounded-xl border bg-card p-4 text-sm text-card-foreground shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-mono text-xs font-semibold text-muted-foreground">
+                            {pedido.numeroPedido}
+                          </p>
+                          <p className="mt-1 font-medium leading-tight">
+                            {pedido.cliente?.nombreCompleto ?? "Venta rápida"}
+                          </p>
+                        </div>
+                        <PedidoStatusBadge estado={pedido.estado} />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between border-t pt-3">
+                        <div className="space-y-0.5">
+                          <p className="text-lg font-bold tracking-tight">{formatCOP(pedido.total)}</p>
+                          {pedido.domiciliario && (
+                            <p className="text-xs text-muted-foreground">{pedido.domiciliario.nombre}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{formatDate(pedido.fecha)}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Table view (desktop) */}
+                <div className="hidden lg:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Pedido</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {misPedidos.map((pedido) => (
+                        <TableRow key={pedido.id} className="cursor-pointer">
+                          <TableCell>
+                            <Link href={`/pedidos/${pedido.id}`} className="font-mono text-xs font-semibold text-muted-foreground hover:text-foreground">
+                              {pedido.numeroPedido}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <Link href={`/pedidos/${pedido.id}`} className="font-medium hover:underline">
+                              {pedido.cliente?.nombreCompleto ?? "Venta rápida"}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="font-medium">{formatCOP(pedido.total)}</TableCell>
+                          <TableCell>
+                            <Link href={`/pedidos/${pedido.id}`}>
+                              <PedidoStatusBadge estado={pedido.estado} />
+                            </Link>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(pedido.fecha)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
     );
   }
