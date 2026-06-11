@@ -58,10 +58,10 @@ Chain strategy: stacked-to-main
 
 ## PR 4 — Componentes Cliente
 
-- [ ] 4.1 Modificar `ArticleList.tsx` para recibir `userRole` y ocultar botones mutación si DOMICILIARIO
-- [ ] 4.2 Modificar `ArticleCard.tsx` para ocultar editar/toggle si DOMICILIARIO
-- [ ] 4.3 Modificar `ArticleRow.tsx` para ocultar editar/toggle si DOMICILIARIO
-- [ ] 4.4 Modificar `PedidoList.tsx` para ocultar FAB si DOMICILIARIO
+- [x] 4.1 Modificar `ArticleList.tsx` para recibir `userRole` y ocultar botones mutación si DOMICILIARIO
+- [x] 4.2 Modificar `ArticleCard.tsx` para ocultar editar/toggle si DOMICILIARIO
+- [x] 4.3 Modificar `ArticleRow.tsx` para ocultar editar/toggle si DOMICILIARIO
+- [x] 4.4 Modificar `PedidoList.tsx` para ocultar FAB si DOMICILIARIO
  - [x] 4.1 Modificar `ArticleList.tsx` para recibir `userRole` y ocultar botones mutación si DOMICILIARIO
  - [x] 4.2 Modificar `ArticleCard.tsx` para ocultar editar/toggle si DOMICILIARIO
  - [x] 4.3 Modificar `ArticleRow.tsx` para ocultar editar/toggle si DOMICILIARIO
@@ -69,9 +69,9 @@ Chain strategy: stacked-to-main
 
 ## PR 5 — Filtrado en Servicios
 
-- [ ] 5.1 Modificar `lib/services/articulos.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
-- [ ] 5.2 Modificar `lib/services/clientes.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
-- [ ] 5.3 Modificar `lib/services/informes.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
+- [x] 5.1 Modificar `lib/services/articulos.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
+- [x] 5.2 Modificar `lib/services/clientes.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
+- [x] 5.3 Modificar `lib/services/informes.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
  - [x] 5.1 Modificar `lib/services/articulos.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
  - [x] 5.2 Modificar `lib/services/clientes.ts` para filtrar queries según rol (DOMICILIARIO → vacío)
  - [x] 5.3 Modificar `lib/services/informes.ts` para filtrar queries según rol (DOMICILIARIO → vacío)

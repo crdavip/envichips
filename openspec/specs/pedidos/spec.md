@@ -26,6 +26,7 @@ Asistente de 3 pasos para crear pedidos de domicilio. Optimizado para mobile (un
 - [ ] MUST mostrar estado de carga en el botón de confirmar
 - [ ] Al guardar exitosamente, MUST redirigir al detalle del pedido creado
 - [ ] SHOULD tener botón "Volver" en cada paso sin perder datos ingresados
+- [ ] DOMICILIARIO NO MUST tener acceso al wizard de creación ni ver el FAB de "Nuevo pedido". Solo ADMIN y SUPERADMIN pueden crear pedidos completos.
 
 ### Technical Notes
 - Componente cliente con `"use client"`, estado del wizard con `useState` o URL params (`?step=1`)
@@ -127,7 +128,7 @@ Transiciones de estado del pedido con validación de reglas de negocio, descuent
 ### Acceptance Criteria
 - [ ] Las transiciones permitidas MUST ser:
   - `PENDIENTE → EN_CAMINO` (domiciliario o admin)
-  - `PENDIENTE → CANCELADO` (solo admin, requiere motivo)
+  - `PENDIENTE → CANCELADO` (solo ADMIN o SUPERADMIN, requiere motivo; DOMICILIARIO no ve ni accede al botón de cancelar)
   - `EN_CAMINO → ENTREGADO` (domiciliario o admin, requiere datos de cobro)
   - `EN_CAMINO → CANCELADO` (solo admin, requiere motivo, MUST revertir stock)
 - [ ] Al pasar a `ENTREGADO`, MUST:
@@ -200,6 +201,7 @@ Capa de Server Actions para el módulo de pedidos, siguiendo el patrón de `arti
 - [ ] `getPedidosAction(filtros?)` MUST retornar lista de pedidos según rol del usuario autenticado
 - [ ] `getPedidoByIdAction(id)` MUST retornar pedido completo con items, historial, cliente y domiciliario
 - [ ] `createPedidoAction(data)` MUST validar con Zod, generar numeroPedido, crear pedido con items en transacción
+- [ ] `createPedidoAction` MUST llamar `requireRole("ADMIN", user)` antes de procesar la creación
 - [ ] `updateEstadoAction(id, data)` MUST validar transición, actualizar estado, crear historial, descontar stock si ENTREGADO, actualizar deuda si FIADO
 - [ ] `cancelarPedidoAction(id, motivo)` MUST validar que el pedido no esté ENTREGADO, crear historial con motivo
 - [ ] `confirmarCobroAdminAction(id)` MUST validar que el pedido esté ENTREGADO y pagoEntregadoAdmin=false, luego actualizar

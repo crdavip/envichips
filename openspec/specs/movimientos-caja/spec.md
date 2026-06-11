@@ -25,6 +25,7 @@ Registro manual de movimientos de caja (ingresos, gastos, préstamos). Los movim
 - [ ] MUST mostrar estado de carga en el botón de guardar
 - [ ] Al guardar exitosamente, MUST cerrar el Dialog y refrescar la lista
 - [ ] MUST registrar `registradoPorId` con el ID del usuario autenticado (session.user.id)
+- [ ] MUST verificar `roleGte(user, "ADMIN")` antes de crear el movimiento. DOMICILIARIO NO MUST poder registrar movimientos.
 - [ ] MUST capturar errores y mostrar toast con mensaje de error
 
 ### Technical Notes
@@ -34,8 +35,9 @@ Registro manual de movimientos de caja (ingresos, gastos, préstamos). Los movim
 - Fecha opcional: si no se provee, usar `new Date()`
 
 ### Test Scenarios
-1. **Crear ingreso**: tipo=INGRESO, categoria=COBRO_CARTERA, monto=50000, descripcion="Abono cliente López", metodoPago=EFECTIVO → movimiento creado, lista actualizada
-2. **Crear gasto**: tipo=GASTO, categoria=ARRIENDO, monto=300000, descripcion="Arriendo local junio", metodoPago=TRANSFERENCIA → movimiento creado
+1. **Admin crea movimiento**: tipo=INGRESO, categoria=COBRO_CARTERA, monto=50000, descripcion="Abono cliente López", metodoPago=EFECTIVO, usuario ADMIN → movimiento creado, lista actualizada
+2. **Domiciliario rechazado**: tipo=INGRESO, usuario DOMICILIARIO → retorna error "Acción no permitida para el rol actual", NO se crea el movimiento
+3. **Crear gasto**: tipo=GASTO, categoria=ARRIENDO, monto=300000, descripcion="Arriendo local junio", metodoPago=TRANSFERENCIA → movimiento creado
 3. **Validación monto negativo**: monto=-1000 → error Zod "Debe ser un valor positivo"
 4. **Validación campos requeridos**: enviar sin tipo → error Zod "Tipo es requerido"
 5. **Error de servidor**: base de datos caída → toast con mensaje de error

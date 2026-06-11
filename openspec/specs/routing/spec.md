@@ -44,3 +44,39 @@
 - Usuarios no autenticados son redirigidos a `/login`
 - Usuarios autenticados ven el contenido protegido
 - El layout de dashboard es el responsable del guard de auth
+
+### R5: Navegación filtrada por rol en sidebar
+
+La sidebar MUST filtrar los nav-links según `session.user.rol`. DOMICILIARIO ve solo Dashboard y Pedidos. ADMIN y SUPERADMIN ven todas las secciones.
+
+- **Given** usuario ADMIN autenticado
+- **When** se renderiza la sidebar
+- **Then** ve links a: Dashboard, Pedidos, Artículos, Clientes, Informes
+
+- **Given** usuario DOMICILIARIO autenticado
+- **When** se renderiza la sidebar
+- **Then** ve solo links a: Dashboard y Pedidos
+
+### R6: Bottom-nav filtrada por rol
+
+La bottom-nav (mobile) MUST aplicar las mismas reglas que la sidebar.
+
+- **Given** usuario ADMIN autenticado en viewport mobile
+- **When** se renderiza bottom-nav
+- **Then** ve todos los iconos de navegación
+
+- **Given** usuario DOMICILIARIO autenticado en viewport mobile
+- **When** se renderiza bottom-nav
+- **Then** ve solo Dashboard y Pedidos
+
+### R7: User-menu "Configuración" para SUPERADMIN
+
+El menú de usuario MUST mostrar "Configuración" SOLO si `session.user.rol === "SUPERADMIN"`.
+
+- **Given** usuario SUPERADMIN autenticado
+- **When** abre el menú de usuario
+- **Then** ve la opción "Configuración"
+
+- **Given** usuario ADMIN autenticado
+- **When** abre el menú de usuario
+- **Then** NO ve la opción "Configuración"
