@@ -14,7 +14,10 @@ export interface ResumenDelDia {
   ventasHoy: number;
   gananciaHoy: number;
   pedidosEntregados: number;
-  pedidosPendientes: number;
+  pedidosPorTomar: number;   // PENDIENTE sin domiciliario
+  pedidosEnCamino: number;   // EN_CAMINO
+  pedidosPendientesCobro: number;  // ENTREGADO con estadoCobro != COBRADO
+  totalPorCobrar: number;    // suma de total de ENTREGADO no cobrados
   stockBajo: {
     count: number;
     productos: {
@@ -72,7 +75,10 @@ export async function getResumenDelDia(
       ventasHoy: 0,
       gananciaHoy: 0,
       pedidosEntregados: 0,
-      pedidosPendientes: 0,
+      pedidosPorTomar: 0,
+      pedidosEnCamino: 0,
+      pedidosPendientesCobro: 0,
+      totalPorCobrar: 0,
       stockBajo: { count: 0, productos: [] },
       sinStock: { count: 0, productos: [] },
       clientesEnDeuda: 0,
@@ -98,7 +104,9 @@ export async function getResumenDelDia(
     ventasAgg,
     gananciaItems,
     pedidosEntregados,
-    pedidosPendientes,
+    pedidosPorTomar,
+    pedidosEnCamino,
+    pendientesCobro,
     todosArticulos,
     clientesEnDeuda,
     deudores,
@@ -115,7 +123,19 @@ export async function getResumenDelDia(
       where: { ...pedidoWhere, estado: "ENTREGADO" },
     }),
     db.pedido.count({
-      where: { estado: { in: ["PENDIENTE", "EN_CAMINO"] } },
+      where: { estado: "PENDIENTE", domiciliarioId: null },
+    }),
+    db.pedido.count({
+      where: { estado: "EN_CAMINO" },
+    }),
+    db.pedido.aggregate({
+      where: {
+        ...pedidoWhere,
+        estado: "ENTREGADO",
+        estadoCobro: { not: "COBRADO" },
+      },
+      _sum: { total: true },
+      _count: true,
     }),
     db.articulo.findMany({
       where: { activo: true },
@@ -143,7 +163,10 @@ export async function getResumenDelDia(
     ventasHoy: ventasAgg._sum.total ?? 0,
     gananciaHoy: gananciaItems.reduce((sum, item) => sum + item.ganancia, 0),
     pedidosEntregados,
-    pedidosPendientes,
+    pedidosPorTomar,
+    pedidosEnCamino,
+    pedidosPendientesCobro: pendientesCobro._count,
+    totalPorCobrar: pendientesCobro._sum.total ?? 0,
     stockBajo: {
       count: stockBajoProductos.length,
       productos: stockBajoProductos,
@@ -301,6 +324,66 @@ export async function getGanancias(
   };
 }
 
+// ─── DOMICILIARIO RESUME ─────────────────────────────────
+
+export interface ResumenDomiciliario {
+  disponibles: number;
+  activos: number;
+  entregadosHoy: number;
+  totalVendidoHoy: number;
+  pendientesCobro: number;       // ENTREGADO sin cobrar del domiciliario
+  totalPorCobrarHoy: number;     // suma de ENTREGADO sin cobrar de hoy
+}
+
+/**
+ * Returns dashboard summary for a DOMICILIARIO user.
+ */
+export async function getResumenDomiciliario(
+  userId: string,
+): Promise<ResumenDomiciliario> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const [disponibles, activos, entregadosHoy, pendientesCobro] = await Promise.all([
+    db.pedido.count({
+      where: { estado: "PENDIENTE", domiciliarioId: null },
+    }),
+    db.pedido.count({
+      where: { domiciliarioId: userId, estado: "EN_CAMINO" },
+    }),
+    db.pedido.aggregate({
+      where: {
+        domiciliarioId: userId,
+        estado: "ENTREGADO",
+        fecha: { gte: today, lt: tomorrow },
+      },
+      _count: true,
+      _sum: { total: true },
+    }),
+    db.pedido.aggregate({
+      where: {
+        domiciliarioId: userId,
+        estado: "ENTREGADO",
+        estadoCobro: { not: "COBRADO" },
+        fecha: { gte: today, lt: tomorrow },
+      },
+      _count: true,
+      _sum: { total: true },
+    }),
+  ]);
+
+  return {
+    disponibles,
+    activos,
+    entregadosHoy: entregadosHoy._count,
+    totalVendidoHoy: entregadosHoy._sum.total ?? 0,
+    pendientesCobro: pendientesCobro._count,
+    totalPorCobrarHoy: pendientesCobro._sum.total ?? 0,
+  };
+}
+
 // ─── DOMICILIARIOS ────────────────────────────────────────
 
 export interface DomiciliarioRow {
@@ -311,6 +394,7 @@ export interface DomiciliarioRow {
   efectivoRecolectado: number;
   transferencias: number;
   pedidosCancelados: number;
+  totalACobrarAdmin: number;   // ENTREGADO no cobrados (estadoCobro != COBRADO)
 }
 
 export async function getDomiciliarios(
@@ -336,6 +420,7 @@ export async function getDomiciliarios(
       total: true,
       montoCobrado: true,
       metodoPago: true,
+      estadoCobro: true,
     },
   });
 
@@ -349,6 +434,7 @@ export async function getDomiciliarios(
       efectivoRecolectado: 0,
       transferencias: 0,
       pedidosCancelados: 0,
+      totalACobrarAdmin: 0,
     });
   }
 
@@ -363,6 +449,9 @@ export async function getDomiciliarios(
       }
       if (p.metodoPago === "TRANSFERENCIA" && p.montoCobrado) {
         row.transferencias += p.montoCobrado;
+      }
+      if (p.estadoCobro !== "COBRADO") {
+        row.totalACobrarAdmin += p.total;
       }
     }
     if (p.estado === "CANCELADO") {

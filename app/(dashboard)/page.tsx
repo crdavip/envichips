@@ -19,9 +19,10 @@ import {
   Banknote,
   TrendingUp,
   TrendingDown,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getResumenDelDia } from "@/lib/services/informes";
+import { getResumenDelDia, getResumenDomiciliario } from "@/lib/services/informes";
 import { formatCOP } from "@/lib/format";
 
 const quickActions = [
@@ -102,7 +103,6 @@ async function DashboardStatsCards() {
       value: formatCOP(resumen.ventasHoy),
       icon: DollarSign,
       description: "Total de ventas del día",
-      trend: { direction: "up" as const, label: "Ventas del día" },
       accent: true,
     },
     {
@@ -110,19 +110,21 @@ async function DashboardStatsCards() {
       value: formatCOP(resumen.gananciaHoy),
       icon: TrendingUp,
       description: "Ganancia bruta del día",
-      trend: { direction: "up" as const, label: "Ganancia del día" },
       accent: false,
     },
     {
-      title: "Pedidos pendientes",
-      value: String(resumen.pedidosPendientes),
+      title: "Por despachar",
+      value: String(resumen.pedidosPorTomar),
       icon: ShoppingCart,
-      description: "Pedidos por despachar",
-      trend: {
-        direction: "neutral" as const,
-        label: `${resumen.pedidosEntregados} entregados hoy`,
-      },
+      description: `${resumen.pedidosEnCamino} en camino, ${resumen.pedidosEntregados} entregados hoy`,
       accent: false,
+    },
+    {
+      title: "Por cobrar",
+      value: String(resumen.pedidosPendientesCobro),
+      icon: Banknote,
+      description: formatCOP(resumen.totalPorCobrar),
+      accent: true,
     },
     {
       title: "Stock bajo",
@@ -132,24 +134,16 @@ async function DashboardStatsCards() {
         resumen.stockBajo.count > 0
           ? `${resumen.stockBajo.count} productos por reabastecer`
           : "Artículos por reabastecer",
-      trend: {
-        direction: "down" as const,
-        label: resumen.stockBajo.count > 0 ? "Revisar inventario" : "Stock suficiente",
-      },
       accent: false,
     },
     {
       title: "Clientes en deuda",
       value: String(resumen.clientesEnDeuda),
       icon: Users,
-      description: "Clientes con saldo pendiente",
-      trend: {
-        direction: "neutral" as const,
-        label:
-          resumen.clientesEnDeuda > 0
-            ? `${formatCOP(resumen.totalACobrar)} por cobrar`
-            : "Sin deudores",
-      },
+      description:
+        resumen.clientesEnDeuda > 0
+          ? `${formatCOP(resumen.totalACobrar)} por cobrar`
+          : "Sin deudores",
       accent: false,
     },
   ];
@@ -186,15 +180,9 @@ async function DashboardStatsCards() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
-              <div className="mt-1 flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
-                <TrendBadge
-                  direction={stat.trend.direction}
-                  label={stat.trend.label}
-                />
-              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {stat.description}
+              </p>
             </CardContent>
           </Card>
         );
@@ -203,10 +191,115 @@ async function DashboardStatsCards() {
   );
 }
 
+// ─── DOMICILIARIO Dashboard ─────────────────────────
+
+const domicilioStats = [
+  {
+    key: "disponibles",
+    title: "Pedidos disponibles",
+    href: "/pedidos",
+    icon: ShoppingCart,
+    description: "Pedidos Pendientes sin asignar",
+  },
+  {
+    key: "activos",
+    title: "Pedidos activos",
+    href: "/pedidos",
+    icon: Package,
+    description: "Pedidos En Camino",
+  },
+  {
+    key: "entregados",
+    title: "Entregados hoy",
+    href: "/pedidos",
+    icon: TrendingUp,
+    description: "Pedidos entregados hoy",
+  },
+  {
+    key: "pendientesCobro",
+    title: "Pendientes de cobro",
+    href: "/pedidos",
+    icon: Banknote,
+    description: "Entregados sin cobrar",
+  },
+] as const;
+
+async function DashboardDomiciliario({ userId }: { userId: string }) {
+  const resumen = await getResumenDomiciliario(userId);
+
+  const values: Record<string, { value: string; sub: string }> = {
+    disponibles: {
+      value: String(resumen.disponibles),
+      sub: `${resumen.disponibles} pedido${resumen.disponibles !== 1 ? "s" : ""} disponible${resumen.disponibles !== 1 ? "s" : ""}`,
+    },
+    activos: {
+      value: String(resumen.activos),
+      sub: `${resumen.activos} pedido${resumen.activos !== 1 ? "s" : ""} en camino`,
+    },
+    entregados: {
+      value: String(resumen.entregadosHoy),
+      sub: formatCOP(resumen.totalVendidoHoy),
+    },
+    pendientesCobro: {
+      value: String(resumen.pendientesCobro),
+      sub: formatCOP(resumen.totalPorCobrarHoy),
+    },
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {domicilioStats.map((stat) => {
+        const Icon = stat.icon;
+        const v = values[stat.key];
+        return (
+          <Link key={stat.key} href={stat.href}>
+            <Card className="relative overflow-hidden transition-shadow hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-4" />
+                  </span>
+                  {stat.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold tracking-tight">{v.value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{v.sub}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function DomiciliarioSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="relative overflow-hidden">
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="mt-1 h-3 w-28" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────
+
 export default async function DashboardPage() {
   const session = await auth();
   const userName = session?.user?.name ?? "Usuario";
-  const canQuickActions = roleGte(session?.user, "ADMIN");
+  const user = session?.user as { id: string; rol: string } | undefined;
+  const isAdmin = roleGte(session?.user, "ADMIN");
+  const isDomiciliario = user?.rol === "DOMICILIARIO";
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -216,7 +309,7 @@ export default async function DashboardPage() {
           Bienvenido, {userName}
         </h1>
         <p className="mt-1 text-sm text-primary-foreground/80">
-          Resumen del negocio —{" "}
+          {isAdmin ? "Resumen del negocio" : "Panel de domiciliario"} —{" "}
           {new Date().toLocaleDateString("es-AR", {
             weekday: "long",
             year: "numeric",
@@ -226,21 +319,27 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <Suspense
-        fallback={
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <StatCardSkeleton key={i} />
-            ))}
-          </div>
-        }
-      >
-        <DashboardStatsCards />
-      </Suspense>
+      {/* Role-based Stats */}
+      {isDomiciliario && user ? (
+        <Suspense fallback={<DomiciliarioSkeleton />}>
+          <DashboardDomiciliario userId={user.id} />
+        </Suspense>
+      ) : (
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+              ))}
+            </div>
+          }
+        >
+          <DashboardStatsCards />
+        </Suspense>
+      )}
 
-      {/* Quick Actions */}
-      {canQuickActions && (
+      {/* Quick Actions — ADMIN only */}
+      {isAdmin && (
       <section>
         <h2 className="mb-3 text-lg font-semibold">Acciones rápidas</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   AlertCircle,
   Ban,
+  Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -60,18 +61,27 @@ async function MetricCards() {
       bg: "bg-blue-50",
     },
     {
-      title: "Pedidos pendientes",
-      value: String(resumen.pedidosPendientes),
-      subtitle: "Por despachar",
+      title: "Por despachar",
+      value: String(resumen.pedidosPorTomar),
+      subtitle: `${resumen.pedidosEnCamino} en camino`,
       icon: ShoppingCart,
-      alert: resumen.pedidosPendientes > 0,
+      alert: resumen.pedidosPorTomar > 0,
       color: "text-amber-600",
       bg: "bg-amber-50",
+    },
+    {
+      title: "Por cobrar",
+      value: String(resumen.pedidosPendientesCobro),
+      subtitle: formatCOP(resumen.totalPorCobrar),
+      icon: Banknote,
+      alert: resumen.pedidosPendientesCobro > 0,
+      color: "text-violet-600",
+      bg: "bg-violet-50",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
       {metrics.map((m) => {
         const Icon = m.icon;
         return (
@@ -188,7 +198,7 @@ async function AlertCards() {
 
 function MetricSkeletons({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
         <Card key={i}>
           <CardHeader className="pb-2">
@@ -232,7 +242,7 @@ export default async function InformesPage() {
       </div>
 
       {/* Metric cards */}
-      <Suspense fallback={<MetricSkeletons count={3} />}>
+      <Suspense fallback={<MetricSkeletons count={4} />}>
         <MetricCards />
       </Suspense>
 

@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type SortField = "pedidosEntregados" | "totalVendido" | "efectivoRecolectado" | "transferencias" | "pedidosCancelados";
+type SortField = "pedidosEntregados" | "totalVendido" | "efectivoRecolectado" | "transferencias" | "pedidosCancelados" | "totalACobrarAdmin";
 type SortDir = "asc" | "desc";
 
 function SortIcon({ field, sortBy, sortDir }: { field: SortField; sortBy: SortField; sortDir: SortDir }) {
@@ -82,6 +82,9 @@ export function DomiciliariosTable({ rows }: DomiciliariosTableProps) {
             <TableHead className={thClass} onClick={() => toggleSort("pedidosCancelados")}>
               Cancelados <SortIcon field="pedidosCancelados" sortBy={sortBy} sortDir={sortDir} />
             </TableHead>
+            <TableHead className={thClass} onClick={() => toggleSort("totalACobrarAdmin")}>
+              Por Confirmar <SortIcon field="totalACobrarAdmin" sortBy={sortBy} sortDir={sortDir} />
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -93,6 +96,7 @@ export function DomiciliariosTable({ rows }: DomiciliariosTableProps) {
               <TableCell className="tabular-nums">{formatCOP(r.efectivoRecolectado)}</TableCell>
               <TableCell className="tabular-nums">{formatCOP(r.transferencias)}</TableCell>
               <TableCell>{r.pedidosCancelados}</TableCell>
+              <TableCell className="tabular-nums font-medium text-amber-600">{formatCOP(r.totalACobrarAdmin)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
