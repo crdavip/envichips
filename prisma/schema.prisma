@@ -121,6 +121,12 @@ enum EstadoPedido {
   CANCELADO
 }
 
+enum EstadoCobro {
+  PENDIENTE
+  COBRADO_PARCIAL
+  COBRADO
+}
+
 enum MetodoPago {
   EFECTIVO
   TRANSFERENCIA
@@ -146,6 +152,7 @@ model Pedido {
   montoCobrado       Int?
   pagoEntregadoAdmin  Boolean          @default(false)
   pagoEntregadoEn    DateTime?
+  estadoCobro        EstadoCobro      @default(PENDIENTE)
   observaciones      String?
   creadoEn           DateTime         @default(now())
   items              PedidoItem[]
