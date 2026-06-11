@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Package } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { roleGte } from "@/lib/auth/authorize";
 import {
   getArticuloByIdAction,
   getHistorialArticuloAction,
@@ -33,6 +36,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function HistorialPage({ params }: Props) {
   const { id } = await params;
+
+  const session = await auth();
+  if (!session?.user || !roleGte(session.user, "ADMIN")) {
+    redirect("/no-autorizado");
+  }
 
   const [articuloResult, historialResult] = await Promise.all([
     getArticuloByIdAction(id),

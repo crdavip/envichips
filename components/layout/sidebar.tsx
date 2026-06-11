@@ -64,6 +64,7 @@ export function Sidebar({ userName, userEmail, userRole }: { userName: string; u
           position={isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"}
           userName={userName}
           userEmail={userEmail}
+          userRole={userRole}
         />
       </div>
     </aside>

@@ -133,20 +133,19 @@ export async function reactivateArticuloAction(
 export async function registerPurchaseAction(
   raw: RegisterPurchaseInput,
 ): Promise<{ data: Awaited<ReturnType<typeof registerPurchase>> } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = registerPurchaseSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
 
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "Debes iniciar sesión para registrar una compra" };
-    }
-
     const data = await registerPurchase({
       ...parsed.data,
-      registradaPorId: session.user.id,
+      registradaPorId: session!.user!.id,
     });
     revalidatePath("/articulos");
     return { data };

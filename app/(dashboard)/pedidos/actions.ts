@@ -114,20 +114,19 @@ export async function updateEstadoAction(
   id: string,
   raw: Omit<UpdateEstadoInput, "cambiadoPorId">,
 ): Promise<{ data: Awaited<ReturnType<typeof actualizarEstado>> } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = updateEstadoSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
 
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "Debes iniciar sesión para actualizar el estado" };
-    }
-
     const data = await actualizarEstado(id, {
       ...parsed.data,
-      cambiadoPorId: session.user.id,
+      cambiadoPorId: session!.user!.id,
     } as UpdateEstadoInput);
     revalidatePath("/pedidos");
     return { data };
@@ -140,18 +139,17 @@ export async function cancelarPedidoAction(
   id: string,
   motivo: string,
 ): Promise<{ data: Awaited<ReturnType<typeof cancelarPedido>> } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = cancelarPedidoSchema.safeParse({ motivo, cambiadoPorId: "" });
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
 
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "Debes iniciar sesión para cancelar el pedido" };
-    }
-
-    const data = await cancelarPedido(id, parsed.data.motivo, session.user.id);
+    const data = await cancelarPedido(id, parsed.data.motivo, session!.user!.id);
     revalidatePath("/pedidos");
     return { data };
   } catch (err) {
@@ -162,22 +160,16 @@ export async function cancelarPedidoAction(
 export async function confirmarCobroAdminAction(
   id: string,
 ): Promise<{ data: Awaited<ReturnType<typeof confirmarCobroAdmin>> } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole(["ADMIN", "SUPERADMIN"], session?.user);
+  if (authError) return { error: authError };
+
   const parsed = confirmarCobroSchema.safeParse({ pedidoId: id });
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
 
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return { error: "No autenticado" };
-    }
-
-    const { rol } = session.user as { rol: string };
-    if (rol !== "ADMIN" && rol !== "SUPERADMIN") {
-      return { error: "Solo administradores pueden confirmar cobros" };
-    }
-
     const data = await confirmarCobroAdmin(id);
     revalidatePath("/pedidos");
     return { data };
@@ -239,23 +231,17 @@ export async function asignarDomiciliarioAction(
   | { data: Awaited<ReturnType<typeof asignarDomiciliario>> }
   | { error: string }
 > {
+  const session = await auth();
+  const authError = requireRole(["ADMIN", "SUPERADMIN"], session?.user);
+  if (authError) return { error: authError };
+
   const parsed = asignarDomiciliarioSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(", ") };
   }
 
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "Debes iniciar sesión" };
-    }
-
-    const { rol } = session.user as { rol: string };
-    if (rol !== "ADMIN" && rol !== "SUPERADMIN") {
-      return { error: "Solo administradores pueden asignar domiciliarios" };
-    }
-
-    const data = await asignarDomiciliario(id, parsed.data.domiciliarioId, session.user.id);
+    const data = await asignarDomiciliario(id, parsed.data.domiciliarioId, session!.user!.id);
     revalidatePath("/pedidos");
     return { data };
   } catch (err) {

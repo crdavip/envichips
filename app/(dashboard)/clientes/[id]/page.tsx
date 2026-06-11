@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { roleGte } from "@/lib/auth/authorize";
 import { getClienteByIdAction } from "@/app/(dashboard)/clientes/actions";
 import { ClienteDetail } from "@/components/clientes/ClienteDetail";
 import type { ClienteDetailData } from "@/components/clientes/ClienteDetail";
@@ -33,8 +34,8 @@ export default async function ClienteDetailPage({ params }: Props) {
   const { id } = await params;
 
   const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
+  if (!session?.user || !roleGte(session.user, "ADMIN")) {
+    redirect("/no-autorizado");
   }
 
   const result = await getClienteByIdAction(id);

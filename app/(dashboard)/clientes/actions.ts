@@ -137,6 +137,10 @@ export async function updateClienteAction(
 export async function deleteClienteAction(
   id: string,
 ): Promise<{ data: Cliente } | { error: string }> {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   try {
     const data = await deleteCliente(id);
     revalidatePath("/clientes");
@@ -159,6 +163,10 @@ export async function registerAbonoAction(
   | { data: Awaited<ReturnType<typeof registerAbono>> }
   | { error: string }
 > {
+  const session = await auth();
+  const authError = requireRole("ADMIN", session?.user);
+  if (authError) return { error: authError };
+
   const parsed = registerAbonoSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -167,14 +175,9 @@ export async function registerAbonoAction(
   }
 
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { error: "Debes iniciar sesión para registrar un abono" };
-    }
-
     const data = await registerAbono({
       ...parsed.data,
-      registradoPorId: session.user.id,
+      registradoPorId: session!.user!.id,
     });
     revalidatePath("/clientes");
     return { data };
