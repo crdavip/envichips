@@ -18,7 +18,7 @@ Asistente de 3 pasos para crear pedidos de domicilio. Optimizado para mobile (un
 - [ ] **Paso 2 — Productos**: MUST incluir buscador de artículos con debounce (300ms), selector de cantidad con teclado numérico nativo, y subtotal por ítem actualizado en tiempo real
 - [ ] **Paso 3 — Resumen**: MUST mostrar lista de items con subtotales, campo de descuento (opcional), selector de método de pago (EFECTIVO/TRANSFERENCIA/FIADO), selector de domiciliario (opcional para venta directa), campo de observaciones y total general
 - [ ] Si `metodoPago = FIADO`, MUST mostrar la deuda actual del cliente como advertencia calculada en tiempo real mediante agregación (pedidos FIADO - abonos) utilizando el servicio de clientes
-- [ ] Si no se asigna `domiciliarioId` (venta directa), MUST crear el pedido directamente en estado `ENTREGADO`
+- [ ] Si no se asigna `domiciliarioId` (venta directa), MUST crear el pedido en estado `PENDIENTE` (disponible para auto-asignación por DOMICILIARIO; Admin transiciona a ENTREGADO manualmente)
 - [ ] Si se asigna `domiciliarioId`, MUST crear el pedido en estado `PENDIENTE`
 - [ ] MUST calcular `subtotal = Σ(cantidad × precio)`, `total = subtotal - descuento`
 - [ ] MUST guardar `precio` y `costo` como snapshot en cada `PedidoItem` al momento de crear
@@ -37,7 +37,7 @@ Asistente de 3 pasos para crear pedidos de domicilio. Optimizado para mobile (un
 
 ### Test Scenarios
 1. **Pedido completo**: seleccionar cliente, agregar 3 productos, confirmar → pedido creado en PENDIENTE con domiciliario asignado
-2. **Venta directa**: seleccionar cliente, productos, sin domiciliario → pedido creado en ENTREGADO
+2. **Venta directa queda PENDIENTE**: seleccionar cliente, productos, sin domiciliario → pedido creado en PENDIENTE, Admin debe transicionar a ENTREGADO manualmente
 3. **FIADO con advertencia (deuda media)**: seleccionar cliente con deuda de $75.000, metodoPago FIADO → mostrar "Deuda actual: $75.000" en fondo amarillo (visible pero no bloqueante)
 4. **FIADO con advertencia (deuda alta)**: seleccionar cliente con deuda de $150.000, metodoPago FIADO → mostrar "Deuda actual: $150.000" en fondo rojo
 5. **FIADO sin deuda**: seleccionar cliente con deuda de $0, metodoPago FIADO → mostrar "Sin deuda" en fondo verde
@@ -57,7 +57,7 @@ Asistente de 3 pasos para crear pedidos de domicilio. Optimizado para mobile (un
 Listado de pedidos con vista adaptada al rol del usuario. Mobile-first con tarjetas, desktop con tabla.
 
 ### Acceptance Criteria
-- [ ] **Rol Domiciliario**: MUST mostrar SOLO los pedidos asignados al domiciliario autenticado, del día actual, en vista de tarjetas
+- [ ] **Rol Domiciliario**: MUST mostrar vista con tabs: "Disponibles" (PENDIENTE sin domiciliario) y "Mis pedidos" (propios: EN_CAMINO + ENTREGADO, sin filtro de día actual)
 - [ ] **Rol Admin/SuperAdmin**: MUST mostrar TODOS los pedidos con filtros por: fecha (rango), domiciliario, estado y cliente
 - [ ] MUST mostrar un badge de estado por pedido con color:
   - `PENDIENTE` → gris
@@ -77,8 +77,9 @@ Listado de pedidos con vista adaptada al rol del usuario. Mobile-first con tarje
 - El Server Action recibe `userId` y `rol` del session para filtrar por rol
 
 ### Test Scenarios
-1. **Domiciliario ve solo sus pedidos**: login como domiciliario → listado muestra solo pedidos asignados a ese usuario
-2. **Admin ve todos**: login como admin → listado muestra todos los pedidos con filtros disponibles
+1. **DOMICILIARIO ve tabs disponibles + activos**: login como DOMICILIARIO → listado muestra "Disponibles" (PENDIENTE sin domiciliario) y "Mis pedidos" (propios)
+2. **Sin pedidos disponibles**: DOMICILIARIO en listado sin PENDIENTE sin domiciliario → tab "Disponibles" MUST mostrar "No hay pedidos disponibles"
+3. **Admin ve todos**: login como admin → listado muestra todos los pedidos con filtros disponibles
 3. **Filtro por estado**: seleccionar "ENTREGADO" → solo pedidos entregados visibles
 4. **Búsqueda**: escribir número de pedido → filtrar por coincidencia
 5. **Pedido sin resultados**: filtrar por fecha sin pedidos → mostrar "No se encontraron pedidos"
@@ -127,13 +128,19 @@ Transiciones de estado del pedido con validación de reglas de negocio, descuent
 
 ### Acceptance Criteria
 - [ ] Las transiciones permitidas MUST ser:
-  - `PENDIENTE → EN_CAMINO` (domiciliario o admin)
+  - `PENDIENTE → EN_CAMINO` (DOMICILIARIO — propio pedido; o ADMIN)
+  - `PENDIENTE → ENTREGADO` (ADMIN/SUPERADMIN — venta directa sin domiciliario, con stock validation; NO permitido para DOMICILIARIO)
   - `PENDIENTE → CANCELADO` (solo ADMIN o SUPERADMIN, requiere motivo; DOMICILIARIO no ve ni accede al botón de cancelar)
-  - `EN_CAMINO → ENTREGADO` (domiciliario o admin, requiere datos de cobro)
+  - `EN_CAMINO → ENTREGADO` (DOMICILIARIO — propio pedido; o ADMIN, requiere datos de cobro)
   - `EN_CAMINO → CANCELADO` (solo admin, requiere motivo, MUST revertir stock)
+- [ ] DOMICILIARIO NO MUST poder saltar estados: PENDIENTE→ENTREGADO directo MUST ser bloqueado con error
 - [ ] Al pasar a `ENTREGADO`, MUST:
-  - Solicitar `dineroCobrado` (boolean: si recibió efectivo) y `montoCobrado` (int COP: monto real recibido)
-  - Descontar stock de cada artículo: `stockActual -= cantidad` en transacción atómica
+  - Validar stock: para cada item del pedido, `articulo.stockActual >= item.cantidad`. Si insuficiente: error "Stock insuficiente para [artículo]: disponible X, requerido Y" y NO cambiar estado
+  - Derivar `estadoCobro` según `metodoPago`:
+    - `EFECTIVO`: si domiciliario indica cobro → `COBRADO_PARCIAL`, si no → `PENDIENTE`
+    - `TRANSFERENCIA`: siempre → `COBRADO_PARCIAL` (admin confirma vía `confirmarCobroAdmin`)
+    - `FIADO`: siempre → `PENDIENTE`
+  - Descontar stock de cada artículo: `stockActual -= cantidad` en transacción atómica (solo después de validación exitosa)
   - Si `metodoPago = FIADO`, MUST utilizar el servicio de clientes para registrar el pedido de manera que la deuda se calcule dinámicamente mediante agregación (pedidos FIADO - abonos) en lugar de modificar directamente un campo `cliente.deuda`
   - Crear registro en `HistorialEstado`
 - [ ] Al cancelar un pedido que estaba `EN_CAMINO`, MUST revertir el stock (si ya se había descontado — en realidad no se descuenta hasta ENTREGADO, así que no hay nada que revertir para EN_CAMINO)
@@ -149,13 +156,56 @@ Transiciones de estado del pedido con validación de reglas de negocio, descuent
 - La validación de transiciones permitidas está en el servicio
 
 ### Test Scenarios
-1. **Pendiente → En Camino**: cambiar estado → pedido actualizado, historial creado, stock sin cambios
-2. **En Camino → Entregado con cobro**: marcar entregado con dineroCobrado=true, monto=50000 → stock descontado, historial creado
-3. **Cancelar desde Pendiente**: cancelar con motivo → estado CANCELADO, historial con motivo
-4. **Transición inválida**: intentar pasar de PENDIENTE a ENTREGADO directamente → error
-5. **FIADO crea pedido y deuda se calcula**: pedido FIADO de $30.000 con cliente con deuda de $50.000 → deuda consultada retorna $80.000, sin campo `cliente.deuda` modificado directamente
-6. **FIADO con abono**: pedido FIADO de $25.000 con cliente con 1 pedido FIADO de $100.000 y 1 abono de $40.000 → deuda consultada retorna $85.000
-7. **FIADO CANCELADO no afecta deuda**: pedido FIADO de $30.000 cancelado → deuda del cliente sigue siendo $50.000
+1. **Pendiente → En Camino**: DOMICILIARIO con pedido asignado PENDIENTE → cambia a EN_CAMINO, historial creado
+2. **DOMICILIARIO no puede saltar estados**: DOMICILIARIO intenta PENDIENTE→ENTREGADO → error "Transición no permitida"
+3. **Admin puede PENDIENTE→ENTREGADO (venta directa)**: Admin con pedido PENDIENTE sin domiciliario → transición permitida, stock validado y descontado
+4. **En Camino → Entregado con cobro**: marcar ENTREGADO con EFECTIVO+cobro → estadoCobro=COBRADO_PARCIAL, stock descontado, historial
+5. **Stock validation antes ENTREGADO**: pedido EN_CAMINO con item de 5 unidades y stockActual=2 → error "Stock insuficiente", estado NO cambia
+6. **Cancelar desde Pendiente**: cancelar con motivo → estado CANCELADO, historial con motivo
+7. **Transición inválida**: intentar pasar de PENDIENTE a ENTREGADO para DOMICILIARIO → error
+8. **FIADO crea pedido y deuda se calcula**: pedido FIADO de $30.000 con cliente con deuda de $50.000 → deuda consultada retorna $80.000
+9. **FIADO con abono**: pedido FIADO de $25.000 → deuda retorna $85.000
+10. **FIADO CANCELADO no afecta deuda**: pedido FIADO de $30.000 cancelado → deuda del cliente sigue siendo $50.000
+
+### 4.1 Modificación de Pedidos (contenido del pedido)
+
+**Files**: `lib/validations/pedidos.ts` (modificarPedidoSchema), `lib/services/pedidos.ts` (modificarPedido), `app/(dashboard)/pedidos/actions.ts` (modificarPedidoAction)
+
+#### Purpose
+Permitir que ADMIN/SUPERADMIN modifique el contenido de pedidos en estado PENDIENTE o EN_CAMINO — editar cantidades, agregar o eliminar items — con validación de inventario, recálculo de totales y auditoría en HistorialEstado.
+
+#### Acceptance Criteria
+- [ ] **Access**: Solo ADMIN y SUPERADMIN MUST poder modificar pedidos. DOMICILIARIO MUST NO tener acceso a la funcionalidad de modificación.
+- [ ] **Estados permitidos**: La modificación MUST solo permitirse para pedidos en `PENDIENTE` o `EN_CAMINO`. Pedidos `ENTREGADO` o `CANCELADO` MUST NO ser modificables.
+- [ ] **Operaciones sobre items**:
+  - MUST poder aumentar o disminuir cantidad de items existentes
+  - MUST poder eliminar items del pedido
+  - MUST poder agregar nuevos items al pedido
+  - MUST validar que al menos un item permanezca después de la modificación
+  - Items existentes: MUST mantener el snapshot original de `precio` y `costo`
+  - Items nuevos: MUST snapshotear el `precio` y `costo` actual del Articulo al momento de la modificación
+- [ ] **Recálculo de totales**: MUST recalcular `subtotal = Σ(item.subtotal)` y `total = subtotal - descuento` (descuento no cambia)
+- [ ] **Validación de stock**: MUST validar `articulo.stockActual >= item.cantidad` para TODOS los items finales. Si insuficiente: error y rechazar toda la modificación
+- [ ] **Re-validación FIADO**: Si `metodoPago = FIADO` y el total cambia, MUST re-validar el límite de crédito vía `validateFiadoDebt`
+- [ ] **Atomicidad**: TODAS las operaciones MUST ejecutarse en una sola transacción Prisma `$transaction`. Rollback total ante cualquier fallo
+- [ ] **Auditoría**: MUST crear HistorialEstado con `estadoAntes === estadoDespues`, `motivo` descriptivo (ej: "Items modificados: Papas x5→x3, Plátanos x2 agregado"), y `cambiadoPorId`
+
+#### Technical Notes
+- Nueva función `modificarPedido()` en `lib/services/pedidos.ts`
+- Diff de items: identificar cuáles crear, actualizar y eliminar
+- Snapshots de precio/costo solo para items nuevos
+- Re-validación completa de stock (no solo items cambiados)
+- Patrón de transacción: delete removed → update existing → create new → recalc totals → update Pedido → create HistorialEstado
+- Misma validación de roles que `cancelarPedido` (requireRole ADMIN/SUPERADMIN)
+- Ver spec completa en `openspec/changes/devoluciones-y-modificacion-pedidos/specs/devoluciones-modificacion/spec.md`
+
+#### Test Scenarios
+1. **Editar cantidad**: DADO pedido PENDIENTE con Papas x5, CUANDO Admin cambia a Papas x3, ENTONCES cantidad actualizada, subtotal recalculado, HistorialEstado creado
+2. **Agregar item**: DADO pedido PENDIENTE, CUANDO Admin agrega Plátanos x2, ENTONCES nuevo PedidoItem con precio/costo actual, total recalculado
+3. **Eliminar item**: DADO pedido PENDIENTE con 3 items, CUANDO Admin elimina 1, ENTONCES item borrado, total recalculado
+4. **Stock insuficiente**: DADO pedido con Papas x5 y stockActual=3, CUANDO Admin cambia a Papas x10, ENTONCES error "Stock insuficiente"
+5. **FIADO re-validación**: DADO pedido FIADO donde agregar items excede límite, CUANDO Admin modifica, ENTONCES error "Límite de crédito excedido"
+6. **DOMICILIARIO bloqueado**: DADO usuario DOMICILIARIO, CUANDO intenta modificar, ENTONCES error "No autorizado"
 
 ---
 
@@ -167,14 +217,20 @@ Transiciones de estado del pedido con validación de reglas de negocio, descuent
 Seguimiento del ciclo de cobro de efectivo separado del estado de entrega. El domiciliario indica si cobró al entregar, el admin confirma cuando recibe el efectivo físicamente.
 
 ### Acceptance Criteria
-- [ ] Al marcar `ENTREGADO`, el domiciliario MUST indicar `dineroCobrado` (true/false) y `montoCobrado` (monto real recibido, puede diferir del total por vueltas/cambio)
-- [ ] Si `dineroCobrado = false`, `montoCobrado` SHOULD ser 0
+- [ ] `estadoCobro` MUST derivarse al marcar ENTREGADO según `metodoPago`:
+  - `EFECTIVO`: si domiciliario indica cobro → `COBRADO_PARCIAL`, si no → `PENDIENTE`
+  - `TRANSFERENCIA`: siempre → `COBRADO_PARCIAL` (admin confirma vía `confirmarCobroAdmin`)
+  - `FIADO`: siempre → `PENDIENTE`
 - [ ] El campo `pagoEntregadoAdmin` MUST ser `false` por defecto
-- [ ] El Admin/SuperAdmin MUST poder cambiar `pagoEntregadoAdmin = true` desde el detalle del pedido
-- [ ] Al cambiar `pagoEntregadoAdmin = true`, MUST registrar automáticamente `pagoEntregadoEn = now()`
-- [ ] Un pedido con `pagoEntregadoAdmin = true` NO MUST permitir cambiar este campo nuevamente
+- [ ] El Admin/SuperAdmin MUST poder cambiar `estadoCobro` de `COBRADO_PARCIAL` a `COBRADO` desde el detalle del pedido
+- [ ] Al confirmar cobro, MUST setear `pagoEntregadoAdmin = true`, `pagoEntregadoEn = now()`, y crear `HistorialEstado` con motivo "Cobro confirmado por administrador"
+- [ ] Un pedido con `estadoCobro = COBRADO` NO MUST permitir confirmar cobro nuevamente (doble confirmación bloqueada)
 - [ ] El estado de cobro MUST ser independiente del estado de entrega (un pedido ENTREGADO puede tener cobro pendiente)
-- [ ] SHOULD mostrar un resumen visual: "Pendiente de cobro" o "Cobrado: $XXX" según el estado
+- [ ] MUST mostrar badge de cobro según `estadoCobro`:
+  - `PENDIENTE` → badge "Pendiente de cobro"
+  - `COBRADO_PARCIAL` → badge "Cobro parcial"
+  - `COBRADO` → badge "Cobrado"
+- [ ] El botón "Confirmar cobro admin" MUST mostrarse solo cuando `estadoCobro = COBRADO_PARCIAL` AND `!pagoEntregadoAdmin` AND isAdmin
 
 ### Technical Notes
 - Server Action `confirmarCobroAdminAction(id)` en actions.ts
@@ -182,11 +238,13 @@ Seguimiento del ciclo de cobro de efectivo separado del estado de entrega. El do
 - El campo `pagoEntregadoEn` se setea con `new Date()` en Colombia timezone
 
 ### Test Scenarios
-1. **Cobro al entregar**: domiciliario marca ENTREGADO con dineroCobrado=true, monto=50000 → pedido entregado con cobro registrado
-2. **Sin cobro**: domiciliario marca ENTREGADO con dineroCobrado=false → pedido entregado, pago pendiente
-3. **Admin confirma cobro**: admin ve pedido con pagoEntregadoAdmin=false → click confirmar → campo pasa a true con timestamp
-4. **Doble confirmación bloqueada**: intentar confirmar cobro ya confirmado → error
-5. **Vista de estado de cobro**: detalle del pedido muestra badge "Pendiente de cobro" o "Cobrado: $XXX"
+1. **EFECTIVO con cobro → COBRADO_PARCIAL**: domiciliario marca ENTREGADO con EFECTIVO+cobro → estadoCobro=COBRADO_PARCIAL
+2. **EFECTIVO sin cobro → PENDIENTE**: domiciliario marca ENTREGADO con EFECTIVO+sin cobro → estadoCobro=PENDIENTE
+3. **TRANSFERENCIA → COBRADO_PARCIAL**: domiciliario marca ENTREGADO con TRANSFERENCIA → estadoCobro=COBRADO_PARCIAL (siempre, admin confirma después)
+4. **FIADO → PENDIENTE**: domiciliario marca ENTREGADO con FIADO → estadoCobro=PENDIENTE
+5. **Admin confirma cobro (COBRADO_PARCIAL→COBRADO)**: admin confirma cobro → estadoCobro=COBRADO, pagoEntregadoAdmin=true, timestamp, HistorialEstado
+6. **Doble confirmación bloqueada**: intentar confirmar cobro con estadoCobro=COBRADO → error "El cobro ya fue confirmado"
+7. **Badge según estado**: PENDIENTE→"Pendiente de cobro", COBRADO_PARCIAL→"Cobro parcial", COBRADO→"Cobrado"
 
 ---
 
@@ -202,9 +260,10 @@ Capa de Server Actions para el módulo de pedidos, siguiendo el patrón de `arti
 - [ ] `getPedidoByIdAction(id)` MUST retornar pedido completo con items, historial, cliente y domiciliario
 - [ ] `createPedidoAction(data)` MUST validar con Zod, generar numeroPedido, crear pedido con items en transacción
 - [ ] `createPedidoAction` MUST llamar `requireRole("ADMIN", user)` antes de procesar la creación
-- [ ] `updateEstadoAction(id, data)` MUST validar transición, actualizar estado, crear historial, descontar stock si ENTREGADO, actualizar deuda si FIADO
+- [ ] `updateEstadoAction(id, data)` MUST recibir el usuario autenticado, delegar validación de rol al servicio (no `requireRole` en la action), validar transición, actualizar estado, crear historial, validar stock y descontar si ENTREGADO, derivar estadoCobro per metodoPago, actualizar deuda si FIADO
+- [ ] `tomarPedidoAction(id)` **NUEVO**: MUST requerir rol DOMICILIARIO, llamar `tomarPedido(id, userId)` con atomicidad (conditional WHERE + transacción), crear HistorialEstado con motivo "Domiciliario asignado por auto-asignación"
 - [ ] `cancelarPedidoAction(id, motivo)` MUST validar que el pedido no esté ENTREGADO, crear historial con motivo
-- [ ] `confirmarCobroAdminAction(id)` MUST validar que el pedido esté ENTREGADO y pagoEntregadoAdmin=false, luego actualizar
+- [ ] `confirmarCobroAdminAction(id)` MUST validar que el pedido esté ENTREGADO y `estadoCobro = COBRADO_PARCIAL` y `pagoEntregadoAdmin = false`, luego setear `estadoCobro = COBRADO`, `pagoEntregadoAdmin = true`, `pagoEntregadoEn = now()`, crear HistorialEstado
 - [ ] TODOS los Server Actions MUST capturar errores y retornar `{ error: string }` en caso de fallo
 - [ ] TODOS los Server Actions MUST usar `"use server"` directive
 - [ ] TODOS los Server Actions MUST hacer `revalidatePath("/dashboard/pedidos")` en mutaciones exitosas
@@ -226,9 +285,10 @@ Esquemas de validación compartidos entre cliente y servidor para el módulo de 
 ### Acceptance Criteria
 - [ ] `createPedidoSchema` MUST validar: clienteId (uuid opcional), clienteNombre (string opcional si es venta rápida), items (array de PedidoItemInput, min 1), metodoPago (enum), descuento (int >= 0, default 0, opcional), domiciliarioId (uuid opcional), observaciones (string opcional, max 500)
 - [ ] `PedidoItemInput` MUST validar: articuloId (uuid), cantidad (int positivo)
-- [ ] `updateEstadoSchema` MUST validar: estado (EstadoPedido), motivo (string opcional, required si estado=CANCELADO), dineroCobrado (boolean opcional), montoCobrado (int >= 0 opcional)
+- [ ] `updateEstadoSchema` MUST validar: estado (EstadoPedido), motivo (string opcional, required si estado=CANCELADO), dineroCobrado (boolean opcional), montoCobrado (int >= 0 opcional), estadoCobro (EstadoCobroEnum opcional)
 - [ ] `confirmarCobroSchema` MUST validar: pedidoId (uuid)
 - [ ] MUST reutilizar `MetodoPagoEnum` de `lib/validations/articulos.ts`
+- [ ] MUST incluir `EstadoCobroEnum` como `z.enum(["PENDIENTE", "COBRADO_PARCIAL", "COBRADO"])`
 - [ ] MUST tener output types: `CreatePedidoInput`, `UpdateEstadoInput`
 
 ### Technical Notes
