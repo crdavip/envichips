@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle2,
   DollarSign,
   Loader2,
+  Minus,
+  Pencil,
+  Plus,
   Printer,
+  Search,
+  Trash2,
   Truck,
   XCircle,
 } from "lucide-react";
@@ -48,6 +53,8 @@ import {
   updateEstadoAction,
   asignarDomiciliarioAction,
   getDomiciliariosAction,
+  modificarPedidoAction,
+  getArticulosForPedidoAction,
 } from "@/app/(dashboard)/pedidos/actions";
 interface DomiciliarioResult {
   id: string;
@@ -70,7 +77,7 @@ interface PedidoItemData {
   cantidad: number;
   precio: number;
   subtotal: number;
-  articulo: { nombre: string; presentacion: string };
+  articulo: { id: string; nombre: string; presentacion: string };
 }
 
 interface ClienteData {
@@ -245,6 +252,80 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
   const [isPendingCancelar, startTransitionCancelar] = useTransition();
   const [isPendingCobro, startTransitionCobro] = useTransition();
 
+  // ── Modificar state ─────────────────────────────────
+
+  interface ModificarItemState {
+    articuloId: string;
+    nombre: string;
+    presentacion: string;
+    cantidad: number;
+    precio: number;
+    subtotal: number;
+  }
+
+  const [showModificarModal, setShowModificarModal] = useState(false);
+  const [modificarItems, setModificarItems] = useState<ModificarItemState[]>(
+    () =>
+      pedido.items.map((i) => ({
+        articuloId: i.articulo.id,
+        nombre: i.articulo.nombre,
+        presentacion: i.articulo.presentacion,
+        cantidad: i.cantidad,
+        precio: i.precio,
+        subtotal: i.subtotal,
+      })),
+  );
+  const [modificarMotivo, setModificarMotivo] = useState("");
+  const [isSavingModificar, setIsSavingModificar] = useState(false);
+  const [modificarError, setModificarError] = useState<string | null>(null);
+
+  // ── Article browse (same pattern as PedidoForm) ──────
+  const [articleQuery, setArticleQuery] = useState("");
+  const [articleResults, setArticleResults] = useState<
+    { id: string; nombre: string; presentacion: string; precio: number; stockActual: number }[]
+  >([]);
+  const [articleLoading, setArticleLoading] = useState(false);
+  const articleDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [showArticleBrowser, setShowArticleBrowser] = useState(false);
+
+  // Load all articles when browser opens (browse mode)
+  useEffect(() => {
+    if (!showArticleBrowser) return;
+    let cancelled = false;
+    setArticleLoading(true);
+    getArticulosForPedidoAction("").then((res) => {
+      if (cancelled) return;
+      if ("data" in res) setArticleResults(res.data);
+      setArticleLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [showArticleBrowser]);
+
+  // Search articles as user types (same debounce as PedidoForm)
+  useEffect(() => {
+    if (articleQuery.length < 2) {
+      if (articleDebounceRef.current) clearTimeout(articleDebounceRef.current);
+      setArticleLoading(true);
+      getArticulosForPedidoAction("").then((res) => {
+        if ("data" in res) setArticleResults(res.data);
+        setArticleLoading(false);
+      });
+      return;
+    }
+
+    if (articleDebounceRef.current) clearTimeout(articleDebounceRef.current);
+    articleDebounceRef.current = setTimeout(async () => {
+      setArticleLoading(true);
+      const res = await getArticulosForPedidoAction(articleQuery);
+      if ("data" in res) setArticleResults(res.data);
+      setArticleLoading(false);
+    }, 300);
+
+    return () => {
+      if (articleDebounceRef.current) clearTimeout(articleDebounceRef.current);
+    };
+  }, [articleQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Role / State Checks ─────────────────────────────
 
   const isAdmin =
@@ -271,6 +352,10 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
   const puedeCambiarDomiciliario =
     (pedido.estado === "PENDIENTE" || pedido.estado === "EN_CAMINO") &&
     isAdmin;
+
+  const puedeModificar =
+    (pedido.estado === "PENDIENTE" || pedido.estado === "EN_CAMINO") &&
+    (isAdmin || (isDomiciliario && pedido.domiciliario?.id === currentUser.id));
 
   // ── Actions ─────────────────────────────────────────
 
@@ -362,6 +447,117 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
     });
   }, [pedido.id, router]);
 
+  // ── Modificar handlers ─────────────────────────────
+
+  const handleOpenModificar = useCallback(() => {
+    setModificarItems(
+      pedido.items.map((i) => ({
+        articuloId: i.articulo.id,
+        nombre: i.articulo.nombre,
+        presentacion: i.articulo.presentacion,
+        cantidad: i.cantidad,
+        precio: i.precio,
+        subtotal: i.subtotal,
+      })),
+    );
+    setModificarMotivo("");
+    setModificarError(null);
+    setShowArticleBrowser(false);
+    setArticleQuery("");
+    setShowModificarModal(true);
+  }, [pedido.items]);
+
+  const handleModificarQtyChange = useCallback(
+    (articuloId: string, newQty: number) => {
+      if (newQty < 1) return;
+      setModificarItems((prev) =>
+        prev.map((item) =>
+          item.articuloId === articuloId
+            ? { ...item, cantidad: newQty, subtotal: newQty * item.precio }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleRemoveModificarItem = useCallback(
+    (articuloId: string) => {
+      const item = modificarItems.find((i) => i.articuloId === articuloId);
+      if (!item) return;
+      if (
+        !window.confirm(
+          `¿Eliminar "${item.nombre}" del pedido? Esta acción no se puede deshacer.`,
+        )
+      )
+        return;
+      setModificarItems((prev) =>
+        prev.filter((i) => i.articuloId !== articuloId),
+      );
+    },
+    [modificarItems],
+  );
+
+  // Quick-add article (tap → add 1, same as PedidoForm)
+  const handleQuickAddArticle = useCallback(
+    (article: { id: string; nombre: string; presentacion: string; precio: number }) => {
+      setModificarItems((prev) => {
+        const existing = prev.find((i) => i.articuloId === article.id);
+        if (existing) {
+          return prev.map((i) =>
+            i.articuloId === article.id
+              ? { ...i, cantidad: i.cantidad + 1, subtotal: (i.cantidad + 1) * i.precio }
+              : i,
+          );
+        }
+        return [
+          ...prev,
+          {
+            articuloId: article.id,
+            nombre: article.nombre,
+            presentacion: article.presentacion,
+            cantidad: 1,
+            precio: article.precio,
+            subtotal: article.precio,
+          },
+        ];
+      });
+    },
+    [],
+  );
+
+  const handleSaveModificar = useCallback(async () => {
+    if (!modificarMotivo.trim()) {
+      setModificarError("Debes ingresar un motivo para la modificación");
+      return;
+    }
+    if (modificarItems.length === 0) {
+      setModificarError("Debe incluir al menos un producto");
+      return;
+    }
+
+    setIsSavingModificar(true);
+    setModificarError(null);
+
+    const res = await modificarPedidoAction(pedido.id, {
+      items: modificarItems.map((i) => ({
+        articuloId: i.articuloId,
+        cantidad: i.cantidad,
+      })),
+      motivo: modificarMotivo.trim(),
+    });
+
+    setIsSavingModificar(false);
+
+    if ("error" in res) {
+      setModificarError(res.error);
+      return;
+    }
+
+    setShowModificarModal(false);
+    router.refresh();
+  }, [pedido.id, modificarItems, modificarMotivo, router]);
+
   // ── Render ──────────────────────────────────────────
 
   return (
@@ -438,6 +634,21 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
             >
               <XCircle className="size-4" />
               Cancelar pedido
+            </Button>
+          )}
+
+          {/* Modificar pedido */}
+          {puedeModificar && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => {
+                setError(null);
+                handleOpenModificar();
+              }}
+            >
+              <Pencil className="size-4" />
+              Modificar pedido
             </Button>
           )}
 
@@ -989,6 +1200,233 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
                 <Loader2 className="size-4 animate-spin" />
               )}
               Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Modificar Pedido ───────────────────── */}
+      <Dialog open={showModificarModal} onOpenChange={setShowModificarModal}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modificar pedido</DialogTitle>
+            <DialogDescription>
+              Modificá los productos y cantidades del pedido{" "}
+              {pedido.numeroPedido}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Items list */}
+            {modificarItems.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No hay productos en el pedido. Agregá al menos uno.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {modificarItems.map((item) => (
+                  <li
+                    key={item.articuloId}
+                    className="flex items-center justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {item.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.presentacion} &middot;{" "}
+                        <span className="tabular-nums">
+                          {formatCOP(item.precio)}
+                        </span>{" "}
+                        c/u
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {/* Quantity controls */}
+                      <div className="flex items-center gap-1 rounded-lg border p-0.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleModificarQtyChange(
+                              item.articuloId,
+                              item.cantidad - 1,
+                            )
+                          }
+                          disabled={item.cantidad <= 1}
+                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          aria-label="Disminuir cantidad"
+                        >
+                          <Minus className="size-3.5" />
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          value={item.cantidad}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") return;
+                            const val = parseInt(raw, 10);
+                            if (!isNaN(val) && val >= 1) {
+                              handleModificarQtyChange(
+                                item.articuloId,
+                                val,
+                              );
+                            }
+                          }}
+                          className="w-12 text-center text-sm font-semibold tabular-nums rounded-md border border-input bg-transparent px-1 py-0.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          aria-label="Editar cantidad"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleModificarQtyChange(
+                              item.articuloId,
+                              item.cantidad + 1,
+                            )
+                          }
+                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                          aria-label="Aumentar cantidad"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                      </div>
+                      <span className="text-sm font-medium tabular-nums min-w-[60px] text-right">
+                        {formatCOP(item.subtotal)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRemoveModificarItem(item.articuloId)
+                        }
+                        aria-label={`Quitar ${item.nombre}`}
+                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Agregar producto — browse + quick-add (igual que PedidoForm) */}
+            <div className="space-y-2">
+              {!showArticleBrowser ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setShowArticleBrowser(true)}
+                >
+                  <Plus className="size-4" />
+                  Agregar producto
+                </Button>
+              ) : (
+                <div className="rounded-lg border p-3">
+                  {/* Search */}
+                  <div className="relative mb-3">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar producto por nombre..."
+                      value={articleQuery}
+                      onChange={(e) => setArticleQuery(e.target.value)}
+                      className="pl-9"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Product list */}
+                  {articleLoading ? (
+                    <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      {articleQuery.length < 2 ? "Cargando artículos..." : "Buscando..."}
+                    </div>
+                  ) : articleResults.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-muted-foreground">
+                      {articleQuery.length >= 2
+                        ? "No se encontraron artículos"
+                        : "No hay artículos disponibles"}
+                    </p>
+                  ) : (
+                    <div className="-mx-3 max-h-48 space-y-0.5 overflow-y-auto">
+                      {articleResults.map((article) => (
+                        <button
+                          key={article.id}
+                          type="button"
+                          onClick={() => handleQuickAddArticle(article)}
+                          disabled={article.stockActual <= 0}
+                          className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate">{article.nombre}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {article.presentacion} &middot; Stock: {article.stockActual}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums">
+                            {formatCOP(article.precio)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 w-full"
+                    onClick={() => {
+                      setShowArticleBrowser(false);
+                      setArticleQuery("");
+                    }}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Motivo */}
+            <div className="space-y-2">
+              <Label htmlFor="modificar-motivo">
+                Motivo de la modificación *
+              </Label>
+              <textarea
+                id="modificar-motivo"
+                className="h-24 w-full resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+                placeholder="Describí el motivo de la modificación..."
+                value={modificarMotivo}
+                onChange={(e) => setModificarMotivo(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Error */}
+            {modificarError && (
+              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                {modificarError}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowModificarModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={isSavingModificar || modificarItems.length === 0}
+              onClick={handleSaveModificar}
+            >
+              {isSavingModificar && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
