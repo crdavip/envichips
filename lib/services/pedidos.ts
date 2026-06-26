@@ -7,6 +7,7 @@ import type {
 import type {
   CreatePedidoInput,
   UpdateEstadoInput,
+  ModificarPedidoInput,
 } from "@/lib/validations/pedidos";
 import { getClienteById, getDeudaCliente } from "@/lib/services/clientes";
 
@@ -555,5 +556,225 @@ export async function confirmarCobroAdmin(id: string, cambiadoPorId: string) {
     });
 
     return updated;
+  });
+}
+
+// ─── MODIFY ─────────────────────────────────────────
+
+export async function modificarPedido(
+  id: string,
+  data: ModificarPedidoInput & { cambiadoPorId: string },
+  user: { id: string; rol: string },
+) {
+  return db.$transaction(async (tx) => {
+    // 1. Read current pedido with items + articulo info + domiciliarioId
+    const pedido = await tx.pedido.findUniqueOrThrow({
+      where: { id },
+      include: {
+        items: {
+          include: { articulo: true },
+        },
+        cliente: true,
+      },
+    });
+
+    // 2. Role-aware permission check (same pattern as actualizarEstado)
+    if (user.rol === "DOMICILIARIO") {
+      if (pedido.domiciliarioId !== user.id) {
+        throw new Error("No puedes modificar un pedido que no está asignado a ti");
+      }
+    } else if (user.rol !== "ADMIN" && user.rol !== "SUPERADMIN") {
+      throw new Error("Rol no autorizado para modificar pedidos");
+    }
+
+    // 3. State validation: only PENDIENTE or EN_CAMINO
+    if (pedido.estado !== "PENDIENTE" && pedido.estado !== "EN_CAMINO") {
+      throw new Error(
+        `No se puede modificar un pedido en estado ${pedido.estado.toLowerCase()}`,
+      );
+    }
+
+    // 4. Build item diff
+    const currentItems = pedido.items;
+    const requestedMap = new Map(data.items.map((i) => [i.articuloId, i.cantidad]));
+    const currentMap = new Map(currentItems.map((i) => [i.articuloId, i]));
+
+    // Items to remove: in current but not in request
+    const toRemove = currentItems.filter((i) => !requestedMap.has(i.articuloId));
+
+    // Items to update: in both, different qty
+    const toUpdate = currentItems.filter((i) => {
+      const requestedQty = requestedMap.get(i.articuloId);
+      return requestedQty !== undefined && requestedQty !== i.cantidad;
+    });
+
+    // Items to create: in request but not in current
+    const toCreateEntries = data.items.filter((i) => !currentMap.has(i.articuloId));
+
+    // 5. Fetch article data for new items (name + price + cost in one shot)
+    const newArticleData = await Promise.all(
+      toCreateEntries.map(async (entry) => {
+        const articulo = await tx.articulo.findUniqueOrThrow({
+          where: { id: entry.articuloId },
+          select: { nombre: true, precio: true, costo: true },
+        });
+        return {
+          ...entry,
+          nombre: articulo.nombre,
+          precio: articulo.precio,
+          costo: articulo.costo,
+        };
+      }),
+    );
+
+    // 6. Build descriptive motivo with change summary
+    const changes: string[] = [];
+    for (const item of toUpdate) {
+      const newQty = requestedMap.get(item.articuloId)!;
+      changes.push(`${item.articulo.nombre} x${item.cantidad}→x${newQty} (modificado)`);
+    }
+    for (const item of toRemove) {
+      changes.push(`${item.articulo.nombre} x${item.cantidad}→x0 (eliminado)`);
+    }
+    for (const nd of newArticleData) {
+      changes.push(`${nd.nombre} x${nd.cantidad} (nuevo)`);
+    }
+
+    const diffMotivo =
+      changes.length > 0
+        ? `Items modificados: ${changes.join(", ")}. Motivo: ${data.motivo}`
+        : data.motivo;
+
+    // 7. Build final item state for stock check
+    const finalItems: { articuloId: string; cantidad: number; nombre: string }[] = [];
+
+    for (const item of currentItems) {
+      if (requestedMap.has(item.articuloId)) {
+        finalItems.push({
+          articuloId: item.articuloId,
+          cantidad: requestedMap.get(item.articuloId)!,
+          nombre: item.articulo.nombre,
+        });
+      }
+    }
+    for (const nd of newArticleData) {
+      finalItems.push({
+        articuloId: nd.articuloId,
+        cantidad: nd.cantidad,
+        nombre: nd.nombre,
+      });
+    }
+
+    // 8. Stock sufficiency check for ALL final items
+    for (const { articuloId, cantidad, nombre } of finalItems) {
+      const articulo = await tx.articulo.findUniqueOrThrow({
+        where: { id: articuloId },
+        select: { stockActual: true },
+      });
+      if (articulo.stockActual < cantidad) {
+        throw new Error(
+          `Stock insuficiente para ${nombre}: disponible ${articulo.stockActual}, requerido ${cantidad}`,
+        );
+      }
+    }
+
+    // 9. Calculate new totals
+    let newSubtotal = 0;
+
+    // Existing items with updated quantities (keep original snapshot prices)
+    for (const item of currentItems) {
+      const newQty = requestedMap.get(item.articuloId);
+      if (newQty !== undefined) {
+        newSubtotal += newQty * item.precio;
+      }
+    }
+    // New items (use current prices)
+    for (const nd of newArticleData) {
+      newSubtotal += nd.cantidad * nd.precio;
+    }
+
+    const newTotal = Math.max(0, newSubtotal - pedido.descuento);
+
+    // 10. FIADO re-validation if total changes
+    if (pedido.metodoPago === "FIADO" && pedido.clienteId && newTotal !== pedido.total) {
+      const validation = await validateFiadoDebt(pedido.clienteId, newTotal);
+      if (!validation.valido) {
+        throw new Error("Límite de crédito excedido");
+      }
+    }
+
+    // 11. Execute modifications atomically
+
+    // Delete removed items
+    if (toRemove.length > 0) {
+      await tx.pedidoItem.deleteMany({
+        where: {
+          pedidoId: id,
+          articuloId: { in: toRemove.map((i) => i.articuloId) },
+        },
+      });
+    }
+
+    // Update existing items with new quantities
+    for (const item of toUpdate) {
+      const newQty = requestedMap.get(item.articuloId)!;
+      await tx.pedidoItem.update({
+        where: { id: item.id },
+        data: {
+          cantidad: newQty,
+          subtotal: newQty * item.precio,
+          ganancia: newQty * (item.precio - item.costo),
+        },
+      });
+    }
+
+    // Create new items
+    if (newArticleData.length > 0) {
+      await tx.pedidoItem.createMany({
+        data: newArticleData.map((nd) => ({
+          articuloId: nd.articuloId,
+          cantidad: nd.cantidad,
+          precio: nd.precio,
+          costo: nd.costo,
+          subtotal: nd.cantidad * nd.precio,
+          ganancia: nd.cantidad * (nd.precio - nd.costo),
+          pedidoId: id,
+        })),
+      });
+    }
+
+    // Update pedido totals
+    await tx.pedido.update({
+      where: { id },
+      data: {
+        subtotal: newSubtotal,
+        total: newTotal,
+      },
+    });
+
+    // Create HistorialEstado entry (same-state, descriptive motivo)
+    await tx.historialEstado.create({
+      data: {
+        pedidoId: id,
+        estadoAntes: pedido.estado,
+        estadoDespues: pedido.estado,
+        cambiadoPorId: data.cambiadoPorId,
+        motivo: diffMotivo,
+      },
+    });
+
+    // Return updated pedido with full includes
+    return tx.pedido.findUniqueOrThrow({
+      where: { id },
+      include: {
+        items: { include: { articulo: true } },
+        historialEstados: {
+          include: { cambiadoPor: true },
+          orderBy: { creadoEn: "asc" },
+        },
+        cliente: true,
+        domiciliario: true,
+      },
+    });
   });
 }

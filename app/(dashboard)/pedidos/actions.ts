@@ -14,6 +14,7 @@ import {
   asignarDomiciliario,
   tomarPedido,
   validateFiadoDebt,
+  modificarPedido,
 } from "@/lib/services/pedidos";
 import { getDeudaCliente } from "@/lib/services/clientes";
 import type { PedidoFilters } from "@/lib/services/pedidos";
@@ -23,11 +24,13 @@ import {
   cancelarPedidoSchema,
   confirmarCobroSchema,
   asignarDomiciliarioSchema,
+  modificarPedidoSchema,
 } from "@/lib/validations/pedidos";
 import type {
   CreatePedidoInput,
   UpdateEstadoInput,
   AsignarDomiciliarioInput,
+  ModificarPedidoInput,
 } from "@/lib/validations/pedidos";
 
 // ─── QUERIES ───────────────────────────────────────
@@ -177,6 +180,35 @@ export async function cancelarPedidoAction(
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al cancelar el pedido" };
+  }
+}
+
+export async function modificarPedidoAction(
+  id: string,
+  raw: Omit<ModificarPedidoInput, "cambiadoPorId">,
+): Promise<{ data: Awaited<ReturnType<typeof modificarPedido>> } | { error: string }> {
+  const session = await auth();
+  if (!session?.user) return { error: "No autenticado" };
+
+  const parsed = modificarPedidoSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues.map((i) => i.message).join(", ") };
+  }
+
+  try {
+    const user = session.user as { id: string; rol: string };
+    const data = await modificarPedido(
+      id,
+      {
+        ...parsed.data,
+        cambiadoPorId: session.user.id,
+      } as ModificarPedidoInput & { cambiadoPorId: string },
+      { id: user.id, rol: user.rol },
+    );
+    revalidatePath("/pedidos");
+    return { data };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Error al modificar el pedido" };
   }
 }
 
