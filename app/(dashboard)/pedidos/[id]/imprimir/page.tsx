@@ -132,10 +132,18 @@ export default function ImprimirPage({ params }: Props) {
               <div className="print-header">
                 <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <IsoType className="print-isotype size-14 sm:size-16" />
-                    <div>
+                    {/* ── Screen: SVG logo ── */}
+                    <IsoType className="print-isotype screen-logo size-14 sm:size-16" />
+                    <div className="screen-logo">
                       <LogoType className="print-logotype h-10 w-auto sm:h-12" />
                     </div>
+                    {/* ── Print: PNG logo (proporciones correctas) ── */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/logo-print.png"
+                      alt="Envichips"
+                      className="print-logo-png"
+                    />
                   </div>
                 </div>
               </div>
@@ -194,6 +202,9 @@ export default function ImprimirPage({ params }: Props) {
                           Producto
                         </th>
                         <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4">
+                          Unitario
+                        </th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-4">
                           Total
                         </th>
                       </tr>
@@ -205,10 +216,10 @@ export default function ImprimirPage({ params }: Props) {
                             {item.cantidad}
                           </td>
                           <td className="px-3 py-2.5 text-sm sm:px-4">
-                            {item.articulo.nombre}{" "}
-                            <span className="text-muted-foreground">
-                              {item.articulo.presentacion}
-                            </span>
+                            {item.articulo.nombre}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-sm sm:px-4">
+                            {formatCOP(item.precio)}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium sm:px-4">
                             {formatCOP(item.subtotal)}

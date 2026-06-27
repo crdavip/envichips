@@ -15,6 +15,11 @@
  * 3. @media print + width — sobrescriben según el ancho del papel
  */
 
+/* ─── Ocultar PNG logo en pantalla (solo se muestra al imprimir) ─── */
+.print-logo-png {
+  display: none;
+}
+
 /* ─── Configuración base de página impresa ─── */
 @page {
   margin: 0;
@@ -80,6 +85,29 @@
     box-sizing: border-box;
   }
 
+  /* ── Ocultar logo SVG en print, mostrar PNG ── */
+  .screen-logo {
+    display: none !important;
+  }
+
+  .print-logo-png {
+    display: block !important;
+    max-width: 32mm;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  /* ── Todo en negrita para legibilidad en impresión ── */
+  .print-container * {
+    font-weight: bold !important;
+  }
+
+  /* ── Revertir weight normal en observaciones itálicas ── */
+  .print-observations em,
+  .print-observations i {
+    font-weight: normal !important;
+  }
+
   /* ── Encabezado de marca: vertical centrado ── */
   .print-header {
     display: flex !important;
@@ -103,34 +131,10 @@
     gap: 0.5mm !important;
   }
 
-  .print-isotype {
-    display: block !important;
-    width: 16mm;
-    height: auto;
-  }
-
-  .print-logotype {
-    display: block !important;
-    height: 6mm;
-    width: auto;
-    max-width: 100%;
-  }
-
   /* Ocultar badge y tagline */
   .print-badge,
   .print-tagline {
     display: none !important;
-  }
-
-  /* Preservar colores del logo */
-  .print-isotype,
-  .print-isotype *,
-  .print-logotype,
-  .print-logotype * {
-    color-adjust: exact !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    background: none !important;
   }
 
   .print-divider {
@@ -191,12 +195,17 @@
 
   .print-table thead th:nth-child(2) {
     text-align: left;
-    width: 56%;
+    width: 44%;
+  }
+
+  .print-table thead th:nth-child(3) {
+    text-align: right;
+    width: 21%;
   }
 
   .print-table thead th:last-child {
     text-align: right;
-    width: 30%;
+    width: 21%;
   }
 
   .print-table tbody td {
@@ -214,6 +223,11 @@
     text-align: left;
     word-break: break-word;
     overflow-wrap: break-word;
+  }
+
+  .print-table tbody td:nth-child(3) {
+    text-align: right;
+    white-space: nowrap;
   }
 
   .print-table tbody td:last-child {
@@ -293,13 +307,8 @@
     font-size: 7pt;
   }
 
-  .print-isotype {
-    width: 12mm;
-  }
-
-  .print-logotype {
-    height: 4.5mm;
-    width: auto;
+  .print-logo-png {
+    max-width: 22mm;
   }
 
   .print-divider,
@@ -327,11 +336,15 @@
   }
 
   .print-table tbody td:nth-child(2) {
-    width: 58%;
+    width: 46%;
+  }
+
+  .print-table tbody td:nth-child(3) {
+    width: 21%;
   }
 
   .print-table tbody td:last-child {
-    width: 30%;
+    width: 21%;
   }
 
   .print-total-row {
@@ -373,13 +386,8 @@
     font-size: 8.5pt;
   }
 
-  .print-isotype {
-    width: 18mm;
-  }
-
-  .print-logotype {
-    height: 7mm;
-    width: auto;
+  .print-logo-png {
+    max-width: 34mm;
   }
 
   .print-divider,
@@ -441,13 +449,8 @@
     line-height: 1.5;
   }
 
-  .print-isotype {
-    width: 24mm;
-  }
-
-  .print-logotype {
-    height: 9mm;
-    width: auto;
+  .print-logo-png {
+    max-width: 40mm;
   }
 
   .print-divider,
@@ -475,11 +478,15 @@
   }
 
   .print-table tbody td:nth-child(2) {
-    width: 55%;
+    width: 43%;
+  }
+
+  .print-table tbody td:nth-child(3) {
+    width: 22%;
   }
 
   .print-table tbody td:last-child {
-    width: 35%;
+    width: 25%;
   }
 
   .print-total-row {
