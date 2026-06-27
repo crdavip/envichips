@@ -43,8 +43,14 @@ export const registerAbonoSchema = z.object({
   notas: z.string().max(500).optional(),
 });
 
+export const registrarVisitaSchema = z.object({
+  clienteId: z.string().uuid("ID de cliente inválido"),
+  notas: z.string().max(1000, "Las notas no pueden exceder 1000 caracteres").optional(),
+});
+
 // ─── OUTPUT TYPES ──────────────────────────────────
 
 export type CreateClienteInput = z.output<typeof createClienteSchema>;
 export type UpdateClienteInput = z.output<typeof updateClienteSchema>;
 export type RegisterAbonoInput = z.output<typeof registerAbonoSchema>;
+export type RegistrarVisitaInput = z.output<typeof registrarVisitaSchema>;

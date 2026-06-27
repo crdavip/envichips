@@ -7,7 +7,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
-import { getDeudaCliente } from "@/lib/services/clientes";
+import { getDeudaCliente, getClientesSinVisita } from "@/lib/services/clientes";
 import type { Prisma } from "@/lib/generated/prisma/client";
 
 export interface ResumenDelDia {
@@ -32,6 +32,7 @@ export interface ResumenDelDia {
     productos: { id: string; nombre: string }[];
   };
   clientesEnDeuda: number;
+  clientesSinVisita: number;
   totalACobrar: number;
 }
 
@@ -82,6 +83,7 @@ export async function getResumenDelDia(
       stockBajo: { count: 0, productos: [] },
       sinStock: { count: 0, productos: [] },
       clientesEnDeuda: 0,
+      clientesSinVisita: 0,
       totalACobrar: 0,
     };
   }
@@ -110,6 +112,7 @@ export async function getResumenDelDia(
     todosArticulos,
     clientesEnDeuda,
     deudores,
+    clientesSinVisita,
   ] = await Promise.all([
     db.pedido.aggregate({
       where: { ...pedidoWhere, estado: "ENTREGADO" },
@@ -148,6 +151,7 @@ export async function getResumenDelDia(
       where: { estado: "EN_DEUDA" },
       select: { id: true },
     }),
+    getClientesSinVisita(7).then((r) => r.count),
   ]);
 
   const stockBajoProductos = todosArticulos.filter(
@@ -176,6 +180,7 @@ export async function getResumenDelDia(
       productos: sinStockProductos,
     },
     clientesEnDeuda,
+    clientesSinVisita,
     totalACobrar: totalesDeuda.reduce((sum, t) => sum + t, 0),
   };
 }

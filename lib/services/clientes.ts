@@ -221,3 +221,133 @@ export async function registerAbono(
     return { abono, deuda, estado: nuevoEstado };
   });
 }
+
+// ─── VISITAS ────────────────────────────────────────
+
+/**
+ * Returns the latest interaction date for a client — the max between
+ * the last ENTREGADO pedido date and the last RegistroVisita date.
+ * Returns null if neither exists.
+ */
+export async function getUltimaVisita(
+  clienteId: string,
+): Promise<Date | null> {
+  const [ultimoPedido, ultimaVisita] = await Promise.all([
+    db.pedido.findFirst({
+      where: { clienteId, estado: "ENTREGADO" },
+      orderBy: { fecha: "desc" },
+      select: { fecha: true },
+    }),
+    db.registroVisita.findFirst({
+      where: { clienteId },
+      orderBy: { fecha: "desc" },
+      select: { fecha: true },
+    }),
+  ]);
+
+  const fechas: Date[] = [];
+  if (ultimoPedido?.fecha) fechas.push(ultimoPedido.fecha);
+  if (ultimaVisita?.fecha) fechas.push(ultimaVisita.fecha);
+
+  if (fechas.length === 0) return null;
+  return new Date(Math.max(...fechas.map((d) => d.getTime())));
+}
+
+/**
+ * Get clients whose last interaction (max of last pedido ENTREGADO,
+ * last RegistroVisita, or creadoEn) is older than `dias` days.
+ * By default excludes inactive clients.
+ */
+export async function getClientesSinVisita(
+  dias: number = 7,
+  excludeInactivos: boolean = true,
+) {
+  const where: Prisma.ClienteWhereInput = {};
+  if (excludeInactivos) where.activo = true;
+
+  const clientes = await db.cliente.findMany({
+    where,
+    select: { id: true, nombreCompleto: true, creadoEn: true },
+  });
+
+  if (clientes.length === 0) {
+    return { count: 0, clientes: [] };
+  }
+
+  const clienteIds = clientes.map((c) => c.id);
+
+  // Bulk query: get latest pedido per cliente
+  const ultimosPedidos = await db.pedido.groupBy({
+    by: ["clienteId"],
+    where: {
+      clienteId: { in: clienteIds },
+      estado: "ENTREGADO",
+    },
+    _max: { fecha: true },
+  });
+  const pedidoMap = new Map(
+    ultimosPedidos.map((p) => [p.clienteId!, p._max.fecha]),
+  );
+
+  // Bulk query: get latest visita per cliente
+  const ultimasVisitas = await db.registroVisita.groupBy({
+    by: ["clienteId"],
+    where: { clienteId: { in: clienteIds } },
+    _max: { fecha: true },
+  });
+  const visitaMap = new Map(
+    ultimasVisitas.map((v) => [v.clienteId, v._max.fecha]),
+  );
+
+  const corte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+
+  const sinVisita = clientes.filter((cliente) => {
+    const fechas = [pedidoMap.get(cliente.id), visitaMap.get(cliente.id)].filter(Boolean) as Date[];
+    const ref = fechas.length > 0 ? new Date(Math.max(...fechas.map((d) => d.getTime()))) : cliente.creadoEn;
+    return ref < corte;
+  });
+
+  return { count: sinVisita.length, clientes: sinVisita };
+}
+
+/**
+ * Returns the most recent RegistroVisita records for a client,
+ * ordered by fecha DESC, with user info.
+ */
+export async function getHistorialVisitas(
+  clienteId: string,
+  limit: number = 5,
+) {
+  return db.registroVisita.findMany({
+    where: { clienteId },
+    orderBy: { fecha: "desc" },
+    take: limit,
+    include: {
+      user: {
+        select: { id: true, nombre: true },
+      },
+    },
+  });
+}
+
+/**
+ * Register a manual visit for a client.
+ */
+export async function registrarVisita(
+  clienteId: string,
+  userId: string,
+  notas?: string,
+) {
+  return db.registroVisita.create({
+    data: {
+      clienteId,
+      userId,
+      notas: notas ?? null,
+    },
+    include: {
+      user: {
+        select: { id: true, nombre: true },
+      },
+    },
+  });
+}

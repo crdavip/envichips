@@ -350,6 +350,16 @@ export async function actualizarEstado(
       }
 
       // NOTE: deuda calculada en tiempo real via clientes service (no se almacena)
+
+      // Auto-create RegistroVisita when ENTREGADO
+      if (pedido.clienteId) {
+        await tx.registroVisita.create({
+          data: {
+            clienteId: pedido.clienteId,
+            userId: user.id,
+          },
+        });
+      }
     }
 
     // 8. Create HistorialEstado

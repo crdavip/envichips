@@ -34,6 +34,7 @@ model User {
   pedidosCreados   Pedido[]          @relation("PedidoCreador")
   pedidosAsignados Pedido[]          @relation("PedidoDomiciliario")
   cambiosEstado                HistorialEstado[]
+  visitasRegistradas          RegistroVisita[]
   configuracionesActualizadas  BusinessConfig[]
 }
 
@@ -99,6 +100,7 @@ model Cliente {
   creadoEn       DateTime @default(now())
   pedidos        Pedido[]
   abonos         Abono[]
+  visitas        RegistroVisita[]
 }
 
 model Abono {
@@ -110,6 +112,20 @@ model Abono {
   metodoPago       MetodoPago
   registradoPorId  String
   notas            String?
+}
+
+// ─── VISITAS A CLIENTES ──────────────────────────────
+
+model RegistroVisita {
+  id        String   @id @default(uuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  fecha     DateTime @default(now())
+  notas     String?
+
+  @@index([clienteId, fecha])
 }
 
 // ─── PEDIDOS ────────────────────────────────────────────

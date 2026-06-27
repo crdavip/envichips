@@ -207,6 +207,24 @@ Permitir que ADMIN/SUPERADMIN modifique el contenido de pedidos en estado PENDIE
 5. **FIADO re-validación**: DADO pedido FIADO donde agregar items excede límite, CUANDO Admin modifica, ENTONCES error "Límite de crédito excedido"
 6. **DOMICILIARIO bloqueado**: DADO usuario DOMICILIARIO, CUANDO intenta modificar, ENTONCES error "No autorizado"
 
+### 4.2 Visita automática al entregar pedido
+
+**Files**: `lib/services/pedidos.ts` (`actualizarEstado`)
+
+#### Purpose
+Crear un RegistroVisita automáticamente cuando un pedido transiciona a ENTREGADO, en la misma transacción atómica.
+
+#### Acceptance Criteria
+- [ ] Dentro de `actualizarEstado()`, al transicionar a estado ENTREGADO, MUST crear un RegistroVisita en la misma transacción atómica
+- [ ] El registro MUST contener: clienteId del pedido, userId del usuario que ejecuta la transición, fecha actual, notas = null
+- [ ] Si la inserción del RegistroVisita falla (ej: FK constraint), MUST revertir toda la transacción Prisma
+- [ ] NO MUST crear RegistroVisita para transiciones a CANCELADO o EN_CAMINO
+
+#### Test Scenarios
+1. **Auto-visita en ENTREGADO exitoso**: DADO pedido PENDIENTE con clienteId válido y stock suficiente, CUANDO ADMIN ejecuta actualizarEstado con estado=ENTREGADO exitoso, ENTONCES RegistroVisita creado con clienteId, userId, fecha actual, notas=null
+2. **Sin visita si no es ENTREGADO**: DADO pedido PENDIENTE, CUANDO se transiciona a CANCELADO o EN_CAMINO, ENTONCES NO se crea RegistroVisita
+3. **Atomicidad — fallo en visita revierte estado**: DADO pedido con datos válidos para ENTREGADO, CUANDO inserción de RegistroVisita falla, ENTONCES toda la transacción se revierte y pedido permanece en estado anterior
+
 ---
 
 ## 5. Ciclo de Cobro
