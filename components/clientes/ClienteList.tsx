@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
+  Calendar,
   Phone,
   Search,
   Users,
@@ -48,6 +49,16 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ClienteForm } from "./ClienteForm";
+import { RegistrarVisitaForm } from "./RegistrarVisitaForm";
+
+// ─── Helpers ────────────────────────────────────────
+
+function daysSince(date: Date | null): number | null {
+  if (!date) return null;
+  const now = new Date();
+  const diff = now.getTime() - new Date(date).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
 
 // ─── Types ──────────────────────────────────────────
 
@@ -58,6 +69,7 @@ interface ClienteRow {
   telefono: string | null;
   estado: string;
   deuda: number;
+  ultimaVisita: Date | null;
   creadoEn: Date;
 }
 
@@ -67,6 +79,7 @@ interface ClienteFiltersState {
   nombre?: string;
   telefono?: string;
   estado?: "AL_DIA" | "EN_DEUDA";
+  sinVisita?: boolean;
 }
 
 // ─── Deuda Badge ────────────────────────────────────
@@ -116,6 +129,9 @@ export function ClienteList({ userRole }: ClienteListProps) {
 
   // ── Form dialog state ──
   const [formMode, setFormMode] = useState<"closed" | "create">("closed");
+
+  // ── Visita dialog state ──
+  const [visitaClienteId, setVisitaClienteId] = useState<string | null>(null);
 
   // ── Data ──
   const [clientes, setClientes] = useState<ClienteRow[]>([]);
@@ -170,6 +186,20 @@ export function ClienteList({ userRole }: ClienteListProps) {
     setFormMode("closed");
   }, []);
 
+  // ── Visita handlers ──
+  const handleVisitaOpen = useCallback((clienteId: string) => {
+    setVisitaClienteId(clienteId);
+  }, []);
+
+  const handleVisitaClose = useCallback(() => {
+    setVisitaClienteId(null);
+  }, []);
+
+  const handleVisitaSuccess = useCallback(() => {
+    setVisitaClienteId(null);
+    fetchClientes();
+  }, [fetchClientes]);
+
   useEffect(() => {
     const timer = setTimeout(() => fetchClientes(), 0);
     return () => clearTimeout(timer);
@@ -187,6 +217,10 @@ export function ClienteList({ userRole }: ClienteListProps) {
         if (!c.telefono?.toLowerCase().includes(q)) return false;
       }
       if (filters.estado && c.estado !== filters.estado) return false;
+      if (filters.sinVisita) {
+        const dias = daysSince(c.ultimaVisita);
+        if (dias !== null && dias <= 7) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -351,6 +385,30 @@ export function ClienteList({ userRole }: ClienteListProps) {
             />
           </div>
         </div>
+
+        {/* Sin visita toggle */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            Visita
+          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setFilters((prev) => ({
+                ...prev,
+                sinVisita: !prev.sinVisita,
+              }))
+            }
+            className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-all ${
+              filters.sinVisita
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : "border-input bg-transparent text-muted-foreground hover:border-muted-foreground/30"
+            }`}
+          >
+            <Calendar className="size-3.5" />
+            Sin visita (+7d)
+          </button>
+        </div>
       </div>
 
       {/* ─── Error banner (with existing data) ─── */}
@@ -405,6 +463,7 @@ export function ClienteList({ userRole }: ClienteListProps) {
               cliente={cliente}
               canMutate={canMutate}
               onDelete={handleDelete}
+              onVisita={handleVisitaOpen}
             />
           ))}
         </div>
@@ -431,6 +490,7 @@ export function ClienteList({ userRole }: ClienteListProps) {
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Deuda</TableHead>
+                <TableHead>Última Visita</TableHead>
                 <TableHead
                   className="cursor-pointer select-none"
                   onClick={() => handleSort("creadoEn")}
@@ -442,7 +502,7 @@ export function ClienteList({ userRole }: ClienteListProps) {
                     sortOrder={sortOrder}
                   />
                 </TableHead>
-                <TableHead className="w-20">Acciones</TableHead>
+                <TableHead className="w-28">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -452,6 +512,7 @@ export function ClienteList({ userRole }: ClienteListProps) {
                   cliente={cliente}
                   canMutate={canMutate}
                   onDelete={handleDelete}
+                  onVisita={handleVisitaOpen}
                 />
               ))}
             </TableBody>
@@ -483,6 +544,16 @@ export function ClienteList({ userRole }: ClienteListProps) {
         </DialogContent>
       </Dialog>
 
+      {/* ─── Registrar Visita Dialog ─── */}
+      <RegistrarVisitaForm
+        clienteId={visitaClienteId ?? ""}
+        open={visitaClienteId !== null}
+        onOpenChange={(open) => {
+          if (!open) handleVisitaClose();
+        }}
+        onSuccess={handleVisitaSuccess}
+      />
+
       {/* ─── FAB: Nuevo Cliente ─── */}
       {canMutate && (
         <button
@@ -506,10 +577,12 @@ function ClienteCard({
   cliente,
   canMutate,
   onDelete,
+  onVisita,
 }: {
   cliente: ClienteRow;
   canMutate: boolean;
   onDelete: (c: ClienteRow) => void;
+  onVisita: (clienteId: string) => void;
 }) {
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm">
@@ -552,6 +625,22 @@ function ClienteCard({
         </div>
       </div>
 
+      {/* ── Visit info ── */}
+      <div className="mt-2 flex items-center justify-between">
+        <VisitBadge ultimaVisita={cliente.ultimaVisita} creadoEn={cliente.creadoEn} />
+        {canMutate && (
+          <button
+            type="button"
+            onClick={() => onVisita(cliente.id)}
+            className="inline-flex h-6 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            title="Registrar visita"
+          >
+            <Calendar className="size-3" />
+            Visita
+          </button>
+        )}
+      </div>
+
       <div className="mt-3 flex items-center justify-between border-t pt-3">
         {cliente.deuda > 0 ? (
           <span className="text-sm font-semibold text-destructive">
@@ -565,16 +654,36 @@ function ClienteCard({
   );
 }
 
+// ─── Visit Badge ──────────────────────────────────
+
+function VisitBadge({ ultimaVisita, creadoEn }: { ultimaVisita: Date | null; creadoEn: Date }) {
+  const days = daysSince(ultimaVisita);
+  if (ultimaVisita === null || days === null) {
+    // No visit data — use creadoEn as reference for new clients
+    const daysFromCreation = daysSince(creadoEn);
+    if (daysFromCreation !== null && daysFromCreation > 7) {
+      return <Badge variant="destructive">Nuevo ({daysFromCreation} días)</Badge>;
+    }
+    return <Badge variant="outline">Sin visitas</Badge>;
+  }
+  if (days > 7) {
+    return <Badge variant="destructive">{days} días sin visita</Badge>;
+  }
+  return <Badge variant="success">Visitado ({days}d)</Badge>;
+}
+
 // ─── ClienteRowDesktop ────────────────────────────
 
 function ClienteRowDesktop({
   cliente,
   canMutate,
   onDelete,
+  onVisita,
 }: {
   cliente: ClienteRow;
   canMutate: boolean;
   onDelete: (c: ClienteRow) => void;
+  onVisita: (clienteId: string) => void;
 }) {
   return (
     <TableRow>
@@ -606,6 +715,9 @@ function ClienteRowDesktop({
           <span className="text-muted-foreground">$0</span>
         )}
       </TableCell>
+      <TableCell>
+        <VisitBadge ultimaVisita={cliente.ultimaVisita} creadoEn={cliente.creadoEn} />
+      </TableCell>
       <TableCell className="text-xs text-muted-foreground">
         {cliente.creadoEn.toLocaleDateString("es-CO", {
           day: "2-digit",
@@ -622,6 +734,16 @@ function ClienteRowDesktop({
             <ExternalLink className="size-3" />
             Ver
           </Link>
+          {canMutate && (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => onVisita(cliente.id)}
+              title="Registrar visita"
+            >
+              <Calendar className="size-3" />
+            </Button>
+          )}
           {canMutate && (
             <Button
               variant="ghost"

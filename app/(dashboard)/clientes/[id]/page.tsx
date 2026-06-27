@@ -45,7 +45,15 @@ export default async function ClienteDetailPage({ params }: Props) {
   }
 
   // Serialize dates to strings for client component
-  const cliente = JSON.parse(JSON.stringify(result.data)) as ClienteDetailData;
+  const cliente = JSON.parse(JSON.stringify(result.data)) as ClienteDetailData & {
+    ultimaVisita: string | null;
+    historialVisitas: Array<{
+      id: string;
+      fecha: string;
+      notas: string | null;
+      user: { id: string; nombre: string } | null;
+    }>;
+  };
 
   const userRole = (session.user as { rol?: string }).rol;
 

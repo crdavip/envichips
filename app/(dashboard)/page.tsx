@@ -146,13 +146,21 @@ async function DashboardStatsCards() {
           : "Sin deudores",
       accent: false,
     },
+    {
+      title: "Sin visita",
+      value: String(resumen.clientesSinVisita),
+      icon: Users,
+      description: "Clientes sin visita >7 días",
+      accent: resumen.clientesSinVisita > 0,
+      href: "/clientes",
+    },
   ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
-        return (
+        const card = (
           <Card
             key={stat.title}
             className={cn(
@@ -186,6 +194,16 @@ async function DashboardStatsCards() {
             </CardContent>
           </Card>
         );
+
+        if ("href" in stat && stat.href) {
+          return (
+            <Link key={stat.title} href={stat.href}>
+              {card}
+            </Link>
+          );
+        }
+
+        return card;
       })}
     </div>
   );

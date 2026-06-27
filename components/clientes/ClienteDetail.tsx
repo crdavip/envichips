@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Edit, Plus } from "lucide-react";
+import { ArrowLeft, Calendar, Edit, Plus } from "lucide-react";
 import type { Cliente, Abono } from "@/lib/generated/prisma/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,23 @@ import {
 import { formatCOP } from "@/lib/format";
 import { ClienteForm } from "./ClienteForm";
 import { AbonoForm } from "./AbonoForm";
+import { RegistrarVisitaForm } from "./RegistrarVisitaForm";
+
+// ─── Helpers ────────────────────────────────────────────
+
+function daysSince(date: Date | string | null): number | null {
+  if (!date) return null;
+  const now = new Date();
+  const diff = now.getTime() - new Date(date).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+interface HistorialVisitaItem {
+  id: string;
+  fecha: string;
+  notas: string | null;
+  user: { id: string; nombre: string } | null;
+}
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -67,6 +84,7 @@ export function ClienteDetail({ cliente, userRole }: ClienteDetailProps) {
   // ── Dialog state ──
   const [showEditForm, setShowEditForm] = useState(false);
   const [showAbonoForm, setShowAbonoForm] = useState(false);
+  const [showVisitaForm, setShowVisitaForm] = useState(false);
 
   // ── Callbacks ──
   const handleEditSuccess = useCallback(() => {
@@ -76,6 +94,11 @@ export function ClienteDetail({ cliente, userRole }: ClienteDetailProps) {
 
   const handleAbonoSuccess = useCallback(() => {
     setShowAbonoForm(false);
+    router.refresh();
+  }, [router]);
+
+  const handleVisitaSuccess = useCallback(() => {
+    setShowVisitaForm(false);
     router.refresh();
   }, [router]);
 
@@ -215,6 +238,101 @@ export function ClienteDetail({ cliente, userRole }: ClienteDetailProps) {
         </CardContent>
       </Card>
 
+      {/* ── Visitas Section ── */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Visitas</CardTitle>
+          {canMutate && (
+            <Button size="sm" onClick={() => setShowVisitaForm(true)}>
+              <Plus className="size-4" />
+              Registrar Visita
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const clienteData = cliente as ClienteDetailData & { ultimaVisita: string | null; historialVisitas: HistorialVisitaItem[] };
+            const days = daysSince(clienteData.ultimaVisita);
+            return (
+              <div className="space-y-4">
+                {/* Last visit summary */}
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">
+                    Última visita
+                  </dt>
+                  <dd className="mt-0.5">
+                    {clienteData.ultimaVisita ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          Hace {days} día{days === 1 ? "" : "s"}
+                        </span>
+                        {days !== null && days > 7 ? (
+                          <Badge variant="destructive">Pendiente</Badge>
+                        ) : (
+                          <Badge variant="success">Reciente</Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Sin visitas registradas
+                      </span>
+                    )}
+                  </dd>
+                </div>
+
+                {/* Visit history */}
+                {clienteData.historialVisitas.length > 0 && (
+                  <div className="border-t pt-3">
+                    <dt className="text-xs font-medium text-muted-foreground mb-2">
+                      Historial de visitas
+                    </dt>
+                    <div className="space-y-2">
+                      {clienteData.historialVisitas.map((v) => (
+                        <div
+                          key={v.id}
+                          className="flex items-start gap-3 rounded-lg bg-muted/50 p-3"
+                        >
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Calendar className="size-3.5" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium">
+                              {new Date(v.fecha).toLocaleDateString("es-CO", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                            {v.user && (
+                              <p className="text-xs text-muted-foreground">
+                                por {v.user.nombre}
+                              </p>
+                            )}
+                            {v.notas && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {v.notas}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {clienteData.historialVisitas.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No hay visitas registradas anteriormente
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       {/* ── Abono History ── */}
       <Card>
         <CardHeader>
@@ -284,6 +402,14 @@ export function ClienteDetail({ cliente, userRole }: ClienteDetailProps) {
         open={showAbonoForm}
         onOpenChange={setShowAbonoForm}
         onSuccess={handleAbonoSuccess}
+      />
+
+      {/* ── Register Visita Dialog ── */}
+      <RegistrarVisitaForm
+        clienteId={cliente.id}
+        open={showVisitaForm}
+        onOpenChange={setShowVisitaForm}
+        onSuccess={handleVisitaSuccess}
       />
     </div>
   );
