@@ -76,6 +76,7 @@ interface PedidoItemData {
   id: string;
   cantidad: number;
   precio: number;
+  precioOriginal: number;
   subtotal: number;
   articulo: { id: string; nombre: string; presentacion: string };
 }
@@ -95,6 +96,7 @@ export interface PedidoData {
   fecha: string;
   estado: string;
   metodoPago: string;
+  tipoDescuento: string;
   subtotal: number;
   descuento: number;
   total: number;
@@ -260,6 +262,7 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
     presentacion: string;
     cantidad: number;
     precio: number;
+    precioOriginal: number;
     subtotal: number;
   }
 
@@ -272,6 +275,7 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
         presentacion: i.articulo.presentacion,
         cantidad: i.cantidad,
         precio: i.precio,
+        precioOriginal: (i as any).precioOriginal ?? i.precio,
         subtotal: i.subtotal,
       })),
   );
@@ -457,6 +461,7 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
         presentacion: i.articulo.presentacion,
         cantidad: i.cantidad,
         precio: i.precio,
+        precioOriginal: (i as any).precioOriginal ?? i.precio,
         subtotal: i.subtotal,
       })),
     );
@@ -518,6 +523,7 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
             presentacion: article.presentacion,
             cantidad: 1,
             precio: article.precio,
+            precioOriginal: article.precio,
             subtotal: article.precio,
           },
         ];
@@ -543,6 +549,9 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
       items: modificarItems.map((i) => ({
         articuloId: i.articuloId,
         cantidad: i.cantidad,
+        ...(pedido.tipoDescuento === "ESPECIAL"
+          ? { precioPersonalizado: i.precio }
+          : {}),
       })),
       motivo: modificarMotivo.trim(),
     });
@@ -715,6 +724,18 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
                 {metodoPagoLabel[pedido.metodoPago] ?? pedido.metodoPago}
               </dd>
             </div>
+            {pedido.tipoDescuento && pedido.tipoDescuento !== "NINGUNO" && (
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">
+                  Tipo de descuento
+                </dt>
+                <dd className="text-sm">
+                  <Badge variant={pedido.tipoDescuento === "ESPECIAL" ? "warning" : "default"}>
+                    {pedido.tipoDescuento === "GLOBAL" ? "Global" : "Especial"}
+                  </Badge>
+                </dd>
+              </div>
+            )}
             {pedido.observaciones && (
               <div className="sm:col-span-2">
                 <dt className="text-xs font-medium text-muted-foreground">
@@ -759,7 +780,14 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
                       {item.cantidad}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatCOP(item.precio)}
+                      {item.precio !== item.precioOriginal ? (
+                        <span className="flex items-center justify-end gap-1">
+                          <span className="text-xs text-muted-foreground line-through">{formatCOP(item.precioOriginal)}</span>
+                          <span className="text-destructive font-medium">{formatCOP(item.precio)}</span>
+                        </span>
+                      ) : (
+                        formatCOP(item.precio)
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-medium">
                       {formatCOP(item.subtotal)}
@@ -783,7 +811,14 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
                       {item.articulo.presentacion}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                      {formatCOP(item.precio)} c/u
+                      {item.precio !== item.precioOriginal ? (
+                        <>
+                          <span className="line-through">{formatCOP(item.precioOriginal)}</span>{' '}
+                          <span className="text-destructive font-medium">{formatCOP(item.precio)}</span> c/u
+                        </>
+                      ) : (
+                        <>{formatCOP(item.precio)} c/u</>
+                      )}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
@@ -801,18 +836,41 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
 
           {/* Totals */}
           <div className="flex flex-col items-end gap-1 border-t px-4 py-3 sm:px-0">
-            <div className="flex w-full max-w-xs justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="tabular-nums">{formatCOP(pedido.subtotal)}</span>
-            </div>
-            {pedido.descuento > 0 && (
-              <div className="flex w-full max-w-xs justify-between text-sm">
-                <span className="text-muted-foreground">Descuento</span>
-                <span className="tabular-nums text-destructive">
-                  -{formatCOP(pedido.descuento)}
-                </span>
-              </div>
-            )}
+            {(() => {
+              const subtotalOriginal = pedido.tipoDescuento === "ESPECIAL"
+                ? pedido.items.reduce((sum, i) => sum + ((i as any).precioOriginal ?? i.precio) * i.cantidad, 0)
+                : pedido.subtotal;
+              const ahorroEspecial = pedido.tipoDescuento === "ESPECIAL"
+                ? pedido.items.reduce((sum, i) => {
+                    const diff = ((i as any).precioOriginal ?? i.precio) - i.precio;
+                    return sum + (diff > 0 ? diff * i.cantidad : 0);
+                  }, 0)
+                : 0;
+              return (
+                <>
+                  <div className="flex w-full max-w-xs justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="tabular-nums">{formatCOP(subtotalOriginal)}</span>
+                  </div>
+                  {pedido.descuento > 0 && (
+                    <div className="flex w-full max-w-xs justify-between text-sm">
+                      <span className="text-muted-foreground">Descuento</span>
+                      <span className="tabular-nums text-destructive">
+                        -{formatCOP(pedido.descuento)}
+                      </span>
+                    </div>
+                  )}
+                  {ahorroEspecial > 0 && (
+                    <div className="flex w-full max-w-xs justify-between text-sm">
+                      <span className="text-muted-foreground">Descuento especial</span>
+                      <span className="tabular-nums text-destructive">
+                        -{formatCOP(ahorroEspecial)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <div className="flex w-full max-w-xs justify-between border-t pt-1 text-sm font-semibold">
               <span>Total</span>
               <span className="tabular-nums">{formatCOP(pedido.total)}</span>
@@ -1291,6 +1349,34 @@ export function PedidoDetail({ pedido, currentUser }: PedidoDetailProps) {
                           <Plus className="size-3.5" />
                         </button>
                       </div>
+                      {/* Editable price for ESPECIAL mode */}
+                      {pedido.tipoDescuento === "ESPECIAL" && (
+                        <div className="flex items-center gap-1 ml-2">
+                          <span className="text-xs text-muted-foreground">$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={item.precio}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              setModificarItems((prev) =>
+                                prev.map((i) =>
+                                  i.articuloId === item.articuloId
+                                    ? { ...i, precio: Math.max(0, val), subtotal: i.cantidad * Math.max(0, val) }
+                                    : i,
+                                ),
+                              );
+                            }}
+                            className="w-20 text-center text-sm tabular-nums rounded-md border border-input bg-transparent px-1 py-0.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            aria-label="Editar precio"
+                          />
+                          {item.precio !== item.precioOriginal && (
+                            <span className="text-xs text-muted-foreground line-through ml-1">
+                              {formatCOP(item.precioOriginal)}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <span className="text-sm font-medium tabular-nums min-w-[60px] text-right">
                         {formatCOP(item.subtotal)}
                       </span>

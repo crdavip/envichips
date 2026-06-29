@@ -53,9 +53,11 @@ interface CartItem {
   articuloId: string;
   nombre: string;
   presentacion: string;
-  precio: number;
+  precio: number;                    // snapshot original from Articulo
+  precioModificado: number | null;   // override price for ESPECIAL mode
+  precioOriginal: number;            // artifact of Articulo.precio
   cantidad: number;
-  subtotal: number;
+  subtotal: number;                  // cantidad * (precioModificado ?? precio)
 }
 
 // ─── Step Indicator ─────────────────────────────────────
@@ -143,6 +145,7 @@ export function PedidoForm() {
   const [items, setItems] = useState<CartItem[]>([]);
 
   const [descuento, setDescuento] = useState(0);
+  const [tipoDescuento, setTipoDescuento] = useState<"NINGUNO" | "GLOBAL" | "ESPECIAL">("NINGUNO");
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
   const [observaciones, setObservaciones] = useState("");
 
@@ -150,8 +153,23 @@ export function PedidoForm() {
   const [submitting, setSubmitting] = useState(false);
 
   // ── Derived totals ──
-  const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  const total = Math.max(0, subtotal - descuento);
+  const subtotalOriginal = items.reduce(
+    (sum, item) => sum + item.precio * item.cantidad, 0,
+  );
+  const subtotalConDescuento = items.reduce((sum, item) => {
+    const effectivePrice = item.precioModificado ?? item.precio;
+    return sum + item.cantidad * effectivePrice;
+  }, 0);
+  const subtotal = tipoDescuento === "ESPECIAL" ? subtotalOriginal : subtotalConDescuento;
+  const descuentoEspecial = tipoDescuento === "ESPECIAL"
+    ? items.reduce((sum, item) => {
+        const diff = item.precio - (item.precioModificado ?? item.precio);
+        return sum + (diff > 0 ? diff * item.cantidad : 0);
+      }, 0)
+    : 0;
+  const total = tipoDescuento === "GLOBAL"
+    ? Math.max(0, subtotalConDescuento - descuento)
+    : subtotalConDescuento;
   const totalQty = items.reduce((sum, item) => sum + item.cantidad, 0);
 
   // ── Cart collapsible ──
@@ -356,7 +374,7 @@ export function PedidoForm() {
             ? {
                 ...i,
                 cantidad: i.cantidad + 1,
-                subtotal: (i.cantidad + 1) * i.precio,
+                subtotal: (i.cantidad + 1) * (i.precioModificado ?? i.precio),
               }
             : i,
         );
@@ -368,6 +386,8 @@ export function PedidoForm() {
           nombre: article.nombre,
           presentacion: article.presentacion,
           precio: article.precio,
+          precioModificado: null,
+          precioOriginal: article.precio,
           cantidad: 1,
           subtotal: article.precio,
         },
@@ -383,7 +403,7 @@ export function PedidoForm() {
     setItems((prev) =>
       prev.map((i) =>
         i.articuloId === articuloId
-          ? { ...i, cantidad: i.cantidad + 1, subtotal: (i.cantidad + 1) * i.precio }
+          ? { ...i, cantidad: i.cantidad + 1, subtotal: (i.cantidad + 1) * (i.precioModificado ?? i.precio) }
           : i,
       ),
     );
@@ -394,7 +414,7 @@ export function PedidoForm() {
       prev.map((i) => {
         if (i.articuloId !== articuloId) return i;
         if (i.cantidad <= 1) return i; // don't go below 1
-        return { ...i, cantidad: i.cantidad - 1, subtotal: (i.cantidad - 1) * i.precio };
+        return { ...i, cantidad: i.cantidad - 1, subtotal: (i.cantidad - 1) * (i.precioModificado ?? i.precio) };
       }),
     );
   };
@@ -410,9 +430,13 @@ export function PedidoForm() {
         items: items.map((i) => ({
           articuloId: i.articuloId,
           cantidad: i.cantidad,
+          ...(tipoDescuento === "ESPECIAL" && i.precioModificado !== null
+            ? { precioPersonalizado: i.precioModificado }
+            : {}),
         })),
         metodoPago,
-        descuento: descuento || 0,
+        tipoDescuento,
+        descuento: tipoDescuento === "GLOBAL" ? (descuento || 0) : 0,
         observaciones: observaciones || undefined,
       });
 
@@ -626,7 +650,7 @@ export function PedidoForm() {
                       setItems((prev) =>
                         prev.map((i) =>
                           i.articuloId === item.articuloId
-                            ? { ...i, cantidad: val, subtotal: val * i.precio }
+                            ? { ...i, cantidad: val, subtotal: val * (i.precioModificado ?? i.precio) }
                             : i,
                         ),
                       );
@@ -890,7 +914,10 @@ export function PedidoForm() {
                     <div className="min-w-0">
                       <p className="truncate text-sm">{item.nombre}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.cantidad} × {formatCOP(item.precio)}
+                        {item.cantidad} × {formatCOP(item.precioModificado ?? item.precio)}
+                        {tipoDescuento === "ESPECIAL" && item.precioModificado !== null && (
+                          <span className="line-through ml-1">{formatCOP(item.precio)}</span>
+                        )}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm font-medium tabular-nums">
@@ -906,11 +933,19 @@ export function PedidoForm() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="tabular-nums">{formatCOP(subtotal)}</span>
                 </div>
-                {descuento > 0 && (
+                {tipoDescuento === "GLOBAL" && descuento > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Descuento</span>
                     <span className="tabular-nums text-destructive">
                       -{formatCOP(descuento)}
+                    </span>
+                  </div>
+                )}
+                {tipoDescuento === "ESPECIAL" && descuentoEspecial > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Descuento especial</span>
+                    <span className="tabular-nums text-destructive">
+                      -{formatCOP(descuentoEspecial)}
                     </span>
                   </div>
                 )}
@@ -928,26 +963,112 @@ export function PedidoForm() {
               <CardTitle>Datos del pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Descuento */}
+              {/* Tipo de Descuento — solo ADMIN/SUPERADMIN */}
               <div className="space-y-2">
-                <Label htmlFor="descuento">
-                  Descuento (COP, opcional)
-                </Label>
-                <Input
-                  id="descuento"
-                  type="number"
-                  min={0}
-                  max={subtotal}
-                  placeholder="0"
-                  value={descuento || ""}
-                  onChange={(e) =>
-                    setDescuento(
-                      Math.max(0, parseInt(e.target.value) || 0),
-                    )
-                  }
-                  inputMode="numeric"
-                />
+                <Label>Descuento</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(["NINGUNO", "GLOBAL", "ESPECIAL"] as const).map((td) => (
+                    <button
+                      key={td}
+                      type="button"
+                      onClick={() => {
+                        setTipoDescuento(td);
+                        if (td !== "GLOBAL") setDescuento(0);
+                      }}
+                      className={`rounded-lg border px-4 py-2 text-sm transition-colors cursor-pointer ${
+                        tipoDescuento === td
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-input bg-transparent text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {td === "NINGUNO" ? "Sin descuento" : td === "GLOBAL" ? "Global" : "Especial"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {tipoDescuento === "NINGUNO" && "Sin descuento aplicado al pedido."}
+                  {tipoDescuento === "GLOBAL" && "Descuento manual en COP sobre el total del pedido."}
+                  {tipoDescuento === "ESPECIAL" && "Modificá el precio unitario de cada producto. Solo para ADMIN."}
+                </p>
               </div>
+
+              {/* Descuento Global — input numérico (solo visible en GLOBAL) */}
+              {tipoDescuento === "GLOBAL" && (
+                <div className="space-y-2">
+                  <Label htmlFor="descuento">Descuento (COP)</Label>
+                  <Input
+                    id="descuento"
+                    type="number"
+                    min={0}
+                    max={subtotal}
+                    placeholder="0"
+                    value={descuento || ""}
+                    onChange={(e) =>
+                      setDescuento(
+                        Math.max(0, parseInt(e.target.value) || 0),
+                      )
+                    }
+                    inputMode="numeric"
+                  />
+                </div>
+              )}
+
+              {/* Descuento Especial — precios editables por item (solo visible en ESPECIAL) */}
+              {tipoDescuento === "ESPECIAL" && (
+                <div className="space-y-3 rounded-lg border p-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Precios especiales por producto
+                  </p>
+                  <ul className="divide-y">
+                    {items.map((item) => (
+                      <li key={item.articuloId} className="flex items-center justify-between gap-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{item.nombre}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.presentacion} &middot; Original: {formatCOP(item.precioOriginal)}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="text-xs text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={item.precioModificado ?? item.precio}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              const clamped = Math.max(0, val);
+                              setItems((prev) =>
+                                prev.map((i) =>
+                                  i.articuloId === item.articuloId
+                                    ? {
+                                        ...i,
+                                        precioModificado: clamped,
+                                        subtotal: i.cantidad * clamped,
+                                      }
+                                    : i,
+                                ),
+                              );
+                            }}
+                            inputMode="numeric"
+                            className="w-24 h-9 text-sm tabular-nums"
+                          />
+                          <span className="text-sm font-medium tabular-nums min-w-[60px] text-right">
+                            {formatCOP(item.cantidad * (item.precioModificado ?? item.precio))}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {descuentoEspecial > 0 && (
+                    <div className="flex justify-between border-t pt-2 text-xs text-muted-foreground">
+                      <span>Descuento especial total:</span>
+                      <span className="text-destructive font-medium">
+                        -{formatCOP(descuentoEspecial)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Metodo de pago */}
               <div className="space-y-2">
