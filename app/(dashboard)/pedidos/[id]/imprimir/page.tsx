@@ -161,6 +161,16 @@ export default function ImprimirPage({ params }: Props) {
                     <span className="text-sm font-semibold">{pedido.numeroPedido}</span>
                   </div>
                   <div className="print-info-row flex justify-between gap-2">
+                    <span className="text-sm font-medium">Descuento:</span>
+                    <span className="text-sm">
+                      {pedido.tipoDescuento === "GLOBAL"
+                        ? "Global"
+                        : pedido.tipoDescuento === "ESPECIAL"
+                          ? "Especial"
+                          : "Ninguno"}
+                    </span>
+                  </div>
+                  <div className="print-info-row flex justify-between gap-2">
                     <span className="text-sm font-medium">Fecha:</span>
                     <span className="text-sm">{formatFecha(pedido.fecha)}</span>
                   </div>
@@ -219,7 +229,14 @@ export default function ImprimirPage({ params }: Props) {
                             {item.articulo.nombre}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm sm:px-4">
-                            {formatCOP(item.precio)}
+                            {pedido.tipoDescuento === "ESPECIAL" && item.precio !== (item as any).precioOriginal ? (
+                              <span>
+                                <span className="line-through text-muted-foreground mr-1">{formatCOP((item as any).precioOriginal)}</span>
+                                <span className="font-semibold">{formatCOP(item.precio)}</span>
+                              </span>
+                            ) : (
+                              formatCOP(item.precio)
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-right text-sm font-medium sm:px-4">
                             {formatCOP(item.subtotal)}
@@ -236,14 +253,37 @@ export default function ImprimirPage({ params }: Props) {
               {/* ══════ TOTALS ══════ */}
               <div className="print-totals ml-auto w-full sm:w-72">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCOP(pedido.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Descuento</span>
-                    <span>{formatCOP(pedido.descuento)}</span>
-                  </div>
+                  {(() => {
+                    const subtotalOriginal = pedido.tipoDescuento === "ESPECIAL"
+                      ? pedido.items.reduce((sum, i) => sum + ((i as any).precioOriginal ?? i.precio) * i.cantidad, 0)
+                      : pedido.subtotal;
+                    const ahorroEspecial = pedido.tipoDescuento === "ESPECIAL"
+                      ? pedido.items.reduce((sum, i) => {
+                          const diff = ((i as any).precioOriginal ?? i.precio) - i.precio;
+                          return sum + (diff > 0 ? diff * i.cantidad : 0);
+                        }, 0)
+                      : 0;
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>{formatCOP(subtotalOriginal)}</span>
+                        </div>
+                        {pedido.descuento > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Descuento global</span>
+                            <span>{formatCOP(pedido.descuento)}</span>
+                          </div>
+                        )}
+                        {ahorroEspecial > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Descuento especial</span>
+                            <span>{formatCOP(ahorroEspecial)}</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   <hr className="border-border/60" />
                   <div className="flex justify-between text-base font-bold">
                     <span>TOTAL</span>
