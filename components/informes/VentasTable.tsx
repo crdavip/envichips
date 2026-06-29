@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import type { VentasPorProducto } from "@/lib/services/informes";
 import { formatCOP } from "@/lib/format";
 import {
@@ -13,43 +14,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type SortField = "unidadesVendidas" | "ingresos" | "ganancia" | "porcentajeDelTotal";
-type SortDir = "asc" | "desc";
-
-function SortIcon({ field, sortBy, sortDir }: { field: SortField; sortBy: SortField; sortDir: SortDir }) {
-  if (sortBy !== field) return null;
-  return sortDir === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
-}
-
 interface VentasTableProps {
   productos: VentasPorProducto[];
 }
 
 export function VentasTable({ productos }: VentasTableProps) {
-  const [sortBy, setSortBy] = useState<SortField>("unidadesVendidas");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const sortFields: SortFieldConfig<VentasPorProducto>[] = [
+    {
+      key: "nombre",
+      label: "Producto",
+      type: "string",
+      accessor: (p: VentasPorProducto) => `${p.nombre} ${p.presentacion}`,
+    },
+    { key: "unidadesVendidas", label: "Unidades", type: "number" },
+    { key: "ingresos", label: "Ingresos", type: "number" },
+    { key: "ganancia", label: "Ganancia", type: "number" },
+    { key: "porcentajeDelTotal", label: "% del total", type: "number" },
+  ];
 
-  const toggleSort = (field: SortField) => {
-    if (sortBy === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortDir("desc");
-    }
-  };
-
-  const maxIngreso = useMemo(
-    () => Math.max(...productos.map((p) => p.ingresos), 0),
-    [productos],
-  );
-
-  const sorted = useMemo(() => {
-    return [...productos].sort((a, b) => {
-      const aVal = a[sortBy];
-      const bVal = b[sortBy];
-      return sortDir === "asc" ? aVal - bVal : bVal - aVal;
-    });
-  }, [productos, sortBy, sortDir]);
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: productos,
+    config: sortFields,
+    defaultSortBy: "unidadesVendidas",
+    defaultSortDir: "desc",
+  });
 
   if (productos.length === 0) {
     return (
@@ -60,18 +48,11 @@ export function VentasTable({ productos }: VentasTableProps) {
     );
   }
 
-  const columns: { label: string; field: SortField; className?: string }[] = [
-    { label: "Producto", field: "unidadesVendidas", className: "text-left min-w-[180px]" },
-    { label: "Unidades", field: "unidadesVendidas" },
-    { label: "Ingresos", field: "ingresos" },
-    { label: "Ganancia", field: "ganancia" },
-    { label: "% del total", field: "porcentajeDelTotal" },
-  ];
-
   return (
     <>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
+        <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
         {sorted.map((p) => (
           <div key={p.articuloId} className="rounded-xl border bg-card p-4">
             <div className="font-medium mb-2">
@@ -109,18 +90,20 @@ export function VentasTable({ productos }: VentasTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[180px]">Producto</TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("unidadesVendidas")}>
-                Unidades <SortIcon field="unidadesVendidas" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none min-w-[180px]" onClick={() => handleSort("nombre")}>
+                Producto {SortIcon("nombre")}
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("ingresos")}>
-                Ingresos <SortIcon field="ingresos" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("unidadesVendidas")}>
+                Unidades {SortIcon("unidadesVendidas")}
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("ganancia")}>
-                Ganancia <SortIcon field="ganancia" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("ingresos")}>
+                Ingresos {SortIcon("ingresos")}
               </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("porcentajeDelTotal")}>
-                % del total <SortIcon field="porcentajeDelTotal" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("ganancia")}>
+                Ganancia {SortIcon("ganancia")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("porcentajeDelTotal")}>
+                % del total {SortIcon("porcentajeDelTotal")}
               </TableHead>
             </TableRow>
           </TableHeader>

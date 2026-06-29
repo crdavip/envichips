@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import type { Movimiento } from "@/lib/generated/prisma/client";
 import { formatCOP } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -50,17 +53,33 @@ interface CajaTableProps {
 }
 
 export function CajaTable({ movimientos }: CajaTableProps) {
+  const sortFields: SortFieldConfig<Movimiento>[] = [
+    { key: "fecha", label: "Fecha", type: "date", accessor: (m: Movimiento) => new Date(m.fecha) },
+    { key: "tipo", label: "Tipo", type: "string" },
+    { key: "categoria", label: "Categoría", type: "string" },
+    { key: "monto", label: "Monto", type: "number" },
+    { key: "descripcion", label: "Descripción", type: "string" },
+    { key: "metodoPago", label: "Método Pago", type: "string" },
+  ];
+
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: movimientos,
+    config: sortFields,
+    defaultSortBy: "fecha",
+    defaultSortDir: "desc",
+  });
+
   const [page, setPage] = useState(0);
 
-  const totalPages = Math.max(1, Math.ceil(movimientos.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / ITEMS_PER_PAGE));
   const safePage = Math.min(page, totalPages - 1);
 
   const pageItems = useMemo(() => {
     const start = safePage * ITEMS_PER_PAGE;
-    return movimientos.slice(start, start + ITEMS_PER_PAGE);
-  }, [movimientos, safePage]);
+    return sorted.slice(start, start + ITEMS_PER_PAGE);
+  }, [sorted, safePage]);
 
-  if (movimientos.length === 0) {
+  if (sorted.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center">
         <p className="text-lg font-medium text-muted-foreground">
@@ -77,6 +96,7 @@ export function CajaTable({ movimientos }: CajaTableProps) {
     <>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
+        <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
         {pageItems.map((m) => (
           <div key={m.id} className="rounded-xl border bg-card p-4">
             <div className="font-medium mb-1">
@@ -106,11 +126,11 @@ export function CajaTable({ movimientos }: CajaTableProps) {
             </div>
           </div>
         ))}
-        {movimientos.length > ITEMS_PER_PAGE && (
+        {sorted.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between px-4 py-3">
             <p className="text-sm text-muted-foreground">
-              {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, movimientos.length)} de{" "}
-              {movimientos.length}
+              {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, sorted.length)} de{" "}
+              {sorted.length}
             </p>
             <div className="flex items-center gap-1">
               <Button
@@ -154,12 +174,24 @@ export function CajaTable({ movimientos }: CajaTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
-              <TableHead className="hidden sm:table-cell">Descripción</TableHead>
-              <TableHead className="hidden md:table-cell">Método Pago</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("fecha")}>
+                Fecha {SortIcon("fecha")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("tipo")}>
+                Tipo {SortIcon("tipo")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("categoria")}>
+                Categoría {SortIcon("categoria")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("monto")}>
+                Monto {SortIcon("monto")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => handleSort("descripcion")}>
+                Descripción {SortIcon("descripcion")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => handleSort("metodoPago")}>
+                Método Pago {SortIcon("metodoPago")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -192,11 +224,11 @@ export function CajaTable({ movimientos }: CajaTableProps) {
           </TableBody>
         </Table>
 
-        {movimientos.length > ITEMS_PER_PAGE && (
+        {sorted.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between border-t px-4 py-3">
             <p className="text-sm text-muted-foreground">
-              {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, movimientos.length)} de{" "}
-              {movimientos.length}
+              {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, sorted.length)} de{" "}
+              {sorted.length}
             </p>
             <div className="flex items-center gap-1">
               <Button

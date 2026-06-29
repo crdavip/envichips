@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import type { InventarioRow } from "@/lib/services/informes";
 import { formatCOP } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -13,14 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-type SortField = "nombre" | "ingresos" | "egresos" | "stockActual" | "stockMinimo" | "valorInventario";
-type SortDir = "asc" | "desc";
-
-function SortIcon({ field, sortBy, sortDir }: { field: SortField; sortBy: SortField; sortDir: SortDir }) {
-  if (sortBy !== field) return null;
-  return sortDir === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
-}
 
 function StockBadge({ estado }: { estado: InventarioRow["estado"] }) {
   const config = {
@@ -37,33 +30,27 @@ interface InventarioTableProps {
 }
 
 export function InventarioTable({ rows }: InventarioTableProps) {
-  const [sortBy, setSortBy] = useState<SortField>("stockActual");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const sortFields: SortFieldConfig<InventarioRow>[] = [
+    { key: "nombre", label: "Nombre", type: "string" },
+    { key: "ingresos", label: "Ingresos", type: "number" },
+    { key: "egresos", label: "Egresos", type: "number" },
+    { key: "stockActual", label: "Stock Actual", type: "number" },
+    { key: "stockMinimo", label: "Stock Mínimo", type: "number" },
+    { key: "estado", label: "Estado", type: "string" },
+    { key: "valorInventario", label: "Valor Inventario", type: "number" },
+  ];
 
-  const toggleSort = (field: SortField) => {
-    if (sortBy === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortDir("desc");
-    }
-  };
-
-  const sorted = [...rows].sort((a, b) => {
-    let aVal: string | number = a[sortBy];
-    let bVal: string | number = b[sortBy];
-    if (typeof aVal === "string") {
-      return sortDir === "asc" ? aVal.localeCompare(bVal as string) : (bVal as string).localeCompare(aVal);
-    }
-    return sortDir === "asc" ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: rows,
+    config: sortFields,
+    defaultSortBy: "nombre",
   });
-
-  const thClass = "cursor-pointer select-none";
 
   return (
     <>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
+        <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
         {sorted.map((r) => {
           const cardColor = r.estado === "SIN_STOCK" ? "text-red-600" : r.estado === "BAJO" ? "text-amber-600" : "";
           return (
@@ -102,24 +89,26 @@ export function InventarioTable({ rows }: InventarioTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className={`min-w-[160px] ${thClass}`} onClick={() => toggleSort("nombre")}>
-                Producto <SortIcon field="nombre" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none min-w-[160px]" onClick={() => handleSort("nombre")}>
+                Producto {SortIcon("nombre")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("ingresos")}>
-                Ingresos <SortIcon field="ingresos" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("ingresos")}>
+                Ingresos {SortIcon("ingresos")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("egresos")}>
-                Egresos <SortIcon field="egresos" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("egresos")}>
+                Egresos {SortIcon("egresos")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("stockActual")}>
-                Stock Actual <SortIcon field="stockActual" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stockActual")}>
+                Stock Actual {SortIcon("stockActual")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("stockMinimo")}>
-                Stock Mínimo <SortIcon field="stockMinimo" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stockMinimo")}>
+                Stock Mínimo {SortIcon("stockMinimo")}
               </TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("valorInventario")}>
-                Valor Inventario <SortIcon field="valorInventario" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("estado")}>
+                Estado {SortIcon("estado")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("valorInventario")}>
+                Valor Inventario {SortIcon("valorInventario")}
               </TableHead>
             </TableRow>
           </TableHeader>

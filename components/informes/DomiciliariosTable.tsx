@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import type { DomiciliarioRow } from "@/lib/services/informes";
 import { formatCOP } from "@/lib/format";
 import {
@@ -13,38 +14,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type SortField = "pedidosEntregados" | "totalVendido" | "efectivoRecolectado" | "transferencias" | "pedidosCancelados" | "totalACobrarAdmin";
-type SortDir = "asc" | "desc";
-
-function SortIcon({ field, sortBy, sortDir }: { field: SortField; sortBy: SortField; sortDir: SortDir }) {
-  if (sortBy !== field) return null;
-  return sortDir === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
-}
-
 interface DomiciliariosTableProps {
   rows: DomiciliarioRow[];
 }
 
 export function DomiciliariosTable({ rows }: DomiciliariosTableProps) {
-  const [sortBy, setSortBy] = useState<SortField>("totalVendido");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const sortFields: SortFieldConfig<DomiciliarioRow>[] = [
+    { key: "nombre", label: "Nombre", type: "string" },
+    { key: "pedidosEntregados", label: "Entregados", type: "number" },
+    { key: "totalVendido", label: "Total Vendido", type: "number" },
+    { key: "efectivoRecolectado", label: "Efectivo", type: "number" },
+    { key: "transferencias", label: "Transferencias", type: "number" },
+    { key: "pedidosCancelados", label: "Cancelados", type: "number" },
+    { key: "totalACobrarAdmin", label: "Por Confirmar", type: "number" },
+  ];
 
-  const toggleSort = (field: SortField) => {
-    if (sortBy === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortDir("desc");
-    }
-  };
-
-  const sorted = useMemo(() => {
-    return [...rows].sort((a, b) => {
-      const aVal = a[sortBy];
-      const bVal = b[sortBy];
-      return sortDir === "asc" ? aVal - bVal : bVal - aVal;
-    });
-  }, [rows, sortBy, sortDir]);
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: rows,
+    config: sortFields,
+    defaultSortBy: "totalVendido",
+    defaultSortDir: "desc",
+  });
 
   if (rows.length === 0) {
     return (
@@ -59,12 +49,11 @@ export function DomiciliariosTable({ rows }: DomiciliariosTableProps) {
     );
   }
 
-  const thClass = "cursor-pointer select-none";
-
   return (
     <>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
+        <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
         {sorted.map((r) => (
           <div key={r.userId} className="rounded-xl border bg-card p-4">
             <div className="font-medium mb-2">{r.nombre}</div>
@@ -101,24 +90,26 @@ export function DomiciliariosTable({ rows }: DomiciliariosTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[140px]">Nombre</TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("pedidosEntregados")}>
-                Entregados <SortIcon field="pedidosEntregados" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none min-w-[140px]" onClick={() => handleSort("nombre")}>
+                Nombre {SortIcon("nombre")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("totalVendido")}>
-                Total Vendido <SortIcon field="totalVendido" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("pedidosEntregados")}>
+                Entregados {SortIcon("pedidosEntregados")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("efectivoRecolectado")}>
-                Efectivo <SortIcon field="efectivoRecolectado" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("totalVendido")}>
+                Total Vendido {SortIcon("totalVendido")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("transferencias")}>
-                Transferencias <SortIcon field="transferencias" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("efectivoRecolectado")}>
+                Efectivo {SortIcon("efectivoRecolectado")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("pedidosCancelados")}>
-                Cancelados <SortIcon field="pedidosCancelados" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("transferencias")}>
+                Transferencias {SortIcon("transferencias")}
               </TableHead>
-              <TableHead className={thClass} onClick={() => toggleSort("totalACobrarAdmin")}>
-                Por Confirmar <SortIcon field="totalACobrarAdmin" sortBy={sortBy} sortDir={sortDir} />
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("pedidosCancelados")}>
+                Cancelados {SortIcon("pedidosCancelados")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("totalACobrarAdmin")}>
+                Por Confirmar {SortIcon("totalACobrarAdmin")}
               </TableHead>
             </TableRow>
           </TableHeader>
