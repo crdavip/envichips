@@ -189,21 +189,27 @@ export async function createPedido(data: CreatePedidoInput) {
           select: { precio: true, costo: true },
         });
 
+        const precioOriginal = articulo.precio;
+        const precioEfectivo = data.tipoDescuento === "ESPECIAL" && item.precioPersonalizado !== undefined
+          ? item.precioPersonalizado
+          : articulo.precio;
+
         return {
           articuloId: item.articuloId,
           cantidad: item.cantidad,
-          precio: articulo.precio,
+          precio: precioEfectivo,
+          precioOriginal,
           costo: articulo.costo,
-          subtotal: item.cantidad * articulo.precio,
-          ganancia: item.cantidad * (articulo.precio - articulo.costo),
+          subtotal: item.cantidad * precioEfectivo,
+          ganancia: item.cantidad * (precioEfectivo - articulo.costo),
         };
       }),
     );
 
     // 3. Calculate totals
     const subtotal = itemsData.reduce((sum, item) => sum + item.subtotal, 0);
-    const descuento = data.descuento ?? 0;
-    const total = subtotal - descuento;
+    const descuento = data.tipoDescuento === "GLOBAL" ? (data.descuento ?? 0) : 0;
+    const total = Math.max(0, subtotal - descuento);
 
     // 4. Always create as PENDIENTE (regardless of domiciliarioId)
     const estado: EstadoPedido = "PENDIENTE";
@@ -217,6 +223,7 @@ export async function createPedido(data: CreatePedidoInput) {
         creadoPorId: data.creadoPorId,
         estado,
         metodoPago: data.metodoPago,
+        tipoDescuento: data.tipoDescuento,
         subtotal,
         descuento,
         total,
@@ -606,15 +613,16 @@ export async function modificarPedido(
 
     // 4. Build item diff
     const currentItems = pedido.items;
-    const requestedMap = new Map(data.items.map((i) => [i.articuloId, i.cantidad]));
+    const requestedMapQty = new Map(data.items.map((i) => [i.articuloId, i.cantidad]));
+    const requestedItemMap = new Map(data.items.map((i) => [i.articuloId, i]));
     const currentMap = new Map(currentItems.map((i) => [i.articuloId, i]));
 
     // Items to remove: in current but not in request
-    const toRemove = currentItems.filter((i) => !requestedMap.has(i.articuloId));
+    const toRemove = currentItems.filter((i) => !requestedMapQty.has(i.articuloId));
 
     // Items to update: in both, different qty
     const toUpdate = currentItems.filter((i) => {
-      const requestedQty = requestedMap.get(i.articuloId);
+      const requestedQty = requestedMapQty.get(i.articuloId);
       return requestedQty !== undefined && requestedQty !== i.cantidad;
     });
 
@@ -628,10 +636,14 @@ export async function modificarPedido(
           where: { id: entry.articuloId },
           select: { nombre: true, precio: true, costo: true },
         });
+        const precioEfectivo = pedido.tipoDescuento === "ESPECIAL" && entry.precioPersonalizado !== undefined
+          ? entry.precioPersonalizado
+          : articulo.precio;
         return {
           ...entry,
           nombre: articulo.nombre,
-          precio: articulo.precio,
+          precio: precioEfectivo,
+          precioOriginal: articulo.precio,
           costo: articulo.costo,
         };
       }),
@@ -640,7 +652,7 @@ export async function modificarPedido(
     // 6. Build descriptive motivo with change summary
     const changes: string[] = [];
     for (const item of toUpdate) {
-      const newQty = requestedMap.get(item.articuloId)!;
+      const newQty = requestedMapQty.get(item.articuloId)!;
       changes.push(`${item.articulo.nombre} x${item.cantidad}→x${newQty} (modificado)`);
     }
     for (const item of toRemove) {
@@ -659,10 +671,10 @@ export async function modificarPedido(
     const finalItems: { articuloId: string; cantidad: number; nombre: string }[] = [];
 
     for (const item of currentItems) {
-      if (requestedMap.has(item.articuloId)) {
+      if (requestedMapQty.has(item.articuloId)) {
         finalItems.push({
           articuloId: item.articuloId,
-          cantidad: requestedMap.get(item.articuloId)!,
+          cantidad: requestedMapQty.get(item.articuloId)!,
           nombre: item.articulo.nombre,
         });
       }
@@ -691,14 +703,18 @@ export async function modificarPedido(
     // 9. Calculate new totals
     let newSubtotal = 0;
 
-    // Existing items with updated quantities (keep original snapshot prices)
+    // Existing items with updated quantities (use effective price for ESPECIAL)
     for (const item of currentItems) {
-      const newQty = requestedMap.get(item.articuloId);
+      const newQty = requestedMapQty.get(item.articuloId);
       if (newQty !== undefined) {
-        newSubtotal += newQty * item.precio;
+        const requestedItem = requestedItemMap.get(item.articuloId);
+        const precioEfectivo = pedido.tipoDescuento === "ESPECIAL" && requestedItem?.precioPersonalizado !== undefined
+          ? requestedItem.precioPersonalizado
+          : item.precio;
+        newSubtotal += newQty * precioEfectivo;
       }
     }
-    // New items (use current prices)
+    // New items (use effective price from newArticleData)
     for (const nd of newArticleData) {
       newSubtotal += nd.cantidad * nd.precio;
     }
@@ -727,13 +743,18 @@ export async function modificarPedido(
 
     // Update existing items with new quantities
     for (const item of toUpdate) {
-      const newQty = requestedMap.get(item.articuloId)!;
+      const newQty = requestedMapQty.get(item.articuloId)!;
+      const requestedItem = requestedItemMap.get(item.articuloId);
+      const precioEfectivo = pedido.tipoDescuento === "ESPECIAL" && requestedItem?.precioPersonalizado !== undefined
+        ? requestedItem.precioPersonalizado
+        : item.precio;
       await tx.pedidoItem.update({
         where: { id: item.id },
         data: {
           cantidad: newQty,
-          subtotal: newQty * item.precio,
-          ganancia: newQty * (item.precio - item.costo),
+          precio: precioEfectivo,
+          subtotal: newQty * precioEfectivo,
+          ganancia: newQty * (precioEfectivo - item.costo),
         },
       });
     }
@@ -745,6 +766,7 @@ export async function modificarPedido(
           articuloId: nd.articuloId,
           cantidad: nd.cantidad,
           precio: nd.precio,
+          precioOriginal: nd.precioOriginal,
           costo: nd.costo,
           subtotal: nd.cantidad * nd.precio,
           ganancia: nd.cantidad * (nd.precio - nd.costo),

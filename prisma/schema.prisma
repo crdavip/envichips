@@ -130,6 +130,12 @@ model RegistroVisita {
 
 // ─── PEDIDOS ────────────────────────────────────────────
 
+enum TipoDescuento {
+  NINGUNO
+  GLOBAL
+  ESPECIAL
+}
+
 enum EstadoPedido {
   PENDIENTE
   EN_CAMINO
@@ -161,6 +167,7 @@ model Pedido {
   creadoPor          User             @relation("PedidoCreador", fields: [creadoPorId], references: [id])
   estado             EstadoPedido     @default(PENDIENTE)
   metodoPago         MetodoPago
+  tipoDescuento      TipoDescuento    @default(NINGUNO)
   subtotal           Int              // COP
   descuento          Int              @default(0)
   total              Int              // COP
@@ -182,7 +189,8 @@ model PedidoItem {
   articuloId String
   articulo   Articulo @relation(fields: [articuloId], references: [id])
   cantidad   Int
-  precio     Int      // snapshot COP
+  precio     Int      // snapshot COP (efectivo)
+  precioOriginal Int  // snapshot COP (Articulo.precio original)
   costo      Int      // snapshot COP
   subtotal   Int      // COP
   ganancia   Int      // COP

@@ -17,11 +17,14 @@ export const EstadoCobroEnum = z.enum([
   "COBRADO",
 ]);
 
+export const TipoDescuentoEnum = z.enum(["NINGUNO", "GLOBAL", "ESPECIAL"]);
+
 // ─── SCHEMAS ───────────────────────────────────────
 
 export const PedidoItemInput = z.object({
   articuloId: z.string().uuid("ID de artículo inválido"),
   cantidad: z.number().int().positive("La cantidad debe ser mayor a 0"),
+  precioPersonalizado: z.number().int().min(0).optional(),
 });
 
 export const createPedidoSchema = z.object({
@@ -31,6 +34,7 @@ export const createPedidoSchema = z.object({
     .array(PedidoItemInput)
     .min(1, "Debe incluir al menos un producto"),
   metodoPago: MetodoPagoEnum,
+  tipoDescuento: TipoDescuentoEnum.default("NINGUNO"),
   descuento: z.number().int().min(0).default(0).optional(),
   domiciliarioId: z.string().uuid().optional(), // null = venta directa
   observaciones: z.string().max(500).optional(),
@@ -64,6 +68,7 @@ export const modificarPedidoSchema = z.object({
       z.object({
         articuloId: z.string().uuid("ID de artículo inválido"),
         cantidad: z.number().int().positive("La cantidad debe ser mayor a 0"),
+        precioPersonalizado: z.number().int().min(0).optional(),
       }),
     )
     .min(1, "Debe incluir al menos un producto"),

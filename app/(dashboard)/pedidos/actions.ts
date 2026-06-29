@@ -93,10 +93,17 @@ export async function createPedidoAction(
       });
       const priceMap = new Map(articles.map((a) => [a.id, a.precio]));
       const subtotal = parsed.data.items.reduce(
-        (s, item) => s + item.cantidad * (priceMap.get(item.articuloId) ?? 0),
+        (s, item) => {
+          const precio = parsed.data.tipoDescuento === "ESPECIAL" && item.precioPersonalizado !== undefined
+            ? item.precioPersonalizado
+            : (priceMap.get(item.articuloId) ?? 0);
+          return s + item.cantidad * precio;
+        },
         0,
       );
-      const estimatedTotal = Math.max(0, subtotal - (parsed.data.descuento ?? 0));
+      const estimatedTotal = parsed.data.tipoDescuento === "GLOBAL"
+        ? Math.max(0, subtotal - (parsed.data.descuento ?? 0))
+        : subtotal;
       const validation = await validateFiadoDebt(parsed.data.clienteId, estimatedTotal);
       if (!validation.valido) {
         return { error: "Límite de crédito excedido" };
