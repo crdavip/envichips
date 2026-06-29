@@ -30,9 +30,16 @@ import type {
 
 export async function getArticulosAction(
   filtros?: ArticuloFilters,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<{ data: Articulo[] } | { error: string }> {
   try {
-    const data = await getArticulos(filtros);
+    // TODO: server-side sort — reserved for future use
+    const data = await getArticulos({
+      ...filtros,
+      ...(sortBy ? { sortBy: sortBy as ArticuloFilters["sortBy"] } : {}),
+      ...(sortOrder ? { sortOrder } : {}),
+    });
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al obtener artículos" };

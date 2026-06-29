@@ -18,6 +18,11 @@ import type {
   UpdateUsuarioInput,
 } from "@/lib/validations/usuarios";
 
+// TODO: server-side sort — reserved for future use
+// When a query action is created for usuarios, add these params:
+//   sortBy?: string;
+//   sortOrder?: "asc" | "desc";
+
 // ─── MUTATIONS ────────────────────────────────────
 
 export async function createUsuarioAction(

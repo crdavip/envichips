@@ -37,15 +37,25 @@ import type {
 
 export async function getPedidosAction(
   filtros?: PedidoFilters,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<{ data: Awaited<ReturnType<typeof getPedidos>> } | { error: string }> {
   try {
     const session = await auth();
     if (!session?.user) return { error: "No autenticado" };
 
-    const data = await getPedidos(filtros, {
-      id: (session.user as { id: string }).id,
-      rol: (session.user as { rol: string }).rol,
-    });
+    // TODO: server-side sort — reserved for future use
+    const data = await getPedidos(
+      {
+        ...filtros,
+        ...(sortBy ? { sortBy } : {}),
+        ...(sortOrder ? { sortOrder } : {}),
+      },
+      {
+        id: (session.user as { id: string }).id,
+        rol: (session.user as { rol: string }).rol,
+      },
+    );
     return { data };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al obtener pedidos" };

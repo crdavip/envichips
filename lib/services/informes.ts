@@ -211,7 +211,10 @@ export async function getVentas(
   userRole?: string,
   customDesde?: Date,
   customHasta?: Date,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<{ productos: VentasPorProducto[]; resumen: ResumenVentas }> {
+  // TODO: server-side sort — reserved for future use
   const { desde, hasta } = getDateRange(dateRange, customDesde, customHasta);
 
   const pedidoWhere: Prisma.PedidoWhereInput = {
@@ -408,7 +411,10 @@ export async function getDomiciliarios(
   dateRange: DateRange = "today",
   customDesde?: Date,
   customHasta?: Date,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<DomiciliarioRow[]> {
+  // TODO: server-side sort — reserved for future use
   const { desde, hasta } = getDateRange(dateRange, customDesde, customHasta);
 
   const domiciliarios = await db.user.findMany({
@@ -495,7 +501,10 @@ export async function getInventario(
   dateRange: DateRange = "today",
   customDesde?: Date,
   customHasta?: Date,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<{ rows: InventarioRow[]; resumen: ResumenInventario }> {
+  // TODO: server-side sort — reserved for future use
   const { desde, hasta } = getDateRange(dateRange, customDesde, customHasta);
 
   const articulos = await db.articulo.findMany({

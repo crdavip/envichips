@@ -65,9 +65,16 @@ async function fetchVisitas(
 
 export async function getClientesAction(
   filtros?: ClienteFilters,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<{ data: ClienteConVisita[] } | { error: string }> {
   try {
-    const clientes = await getClientes(filtros);
+    // TODO: server-side sort — reserved for future use
+    const clientes = await getClientes({
+      ...filtros,
+      ...(sortBy ? { sortBy: sortBy as ClienteFilters["sortBy"] } : {}),
+      ...(sortOrder ? { sortOrder } : {}),
+    });
     const [deudas, visitas] = await Promise.all([
       fetchDeudas(clientes),
       fetchVisitas(clientes),

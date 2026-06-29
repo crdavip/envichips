@@ -54,6 +54,8 @@ export interface PedidoFilters {
   search?: string;
   fechaDesde?: string; // ISO date
   fechaHasta?: string; // ISO date
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 // ─── QUERIES ──────────────────────────────────────
