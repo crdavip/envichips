@@ -136,6 +136,7 @@ export async function getResumenDelDia(
         ...pedidoWhere,
         estado: "ENTREGADO",
         estadoCobro: { not: "COBRADO" },
+        metodoPago: { not: "FIADO" },
       },
       _sum: { total: true },
       _count: true,
