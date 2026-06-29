@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users, Plus, RefreshCw, ExternalLink, Shield, Pencil, Power, PowerOff } from "lucide-react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import { toggleUsuarioAction } from "@/app/(dashboard)/usuarios/actions";
 import type { UsuarioListado } from "@/lib/services/usuarios";
 import { Button } from "@/components/ui/button";
@@ -67,6 +70,25 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
     // Reload page to get fresh data from server
     router.refresh();
   }, [router]);
+
+  // ── Sort config ──
+  const sortFields: SortFieldConfig<UsuarioListado>[] = [
+    { key: "nombre", label: "Nombre", type: "string" },
+    { key: "email", label: "Email", type: "string" },
+    { key: "rol", label: "Rol", type: "string" },
+    { key: "activo", label: "Estado", type: "string", accessor: (u: UsuarioListado) => u.activo ? "Activo" : "Inactivo" },
+    { key: "telefono", label: "Teléfono", type: "string", nullsLast: true },
+    { key: "ultimoAcceso", label: "Último acceso", type: "date", nullsLast: true },
+    { key: "creadoPor", label: "Creado por", type: "string", accessor: (u: UsuarioListado) => u.creadoPor?.nombre ?? null, nullsLast: true },
+    { key: "creadoEn", label: "Creado", type: "date" },
+  ];
+
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: usuarios,
+    config: sortFields,
+    defaultSortBy: "creadoEn",
+    defaultSortDir: "desc",
+  });
 
   const handleToggle = async (id: string, nombre: string) => {
     const user = usuarios.find((u) => u.id === id);
@@ -151,10 +173,12 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
         </div>
       )}
 
-      {/* ─── Mobile cards ─── */}
+      {/* ─── SortBar (mobile) ─── */}
       {usuarios.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-          {usuarios.map((usuario) => (
+        <>
+          <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+          {sorted.map((usuario) => (
             <UsuarioCard
               key={usuario.id}
               usuario={usuario}
@@ -163,6 +187,7 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
             />
           ))}
         </div>
+        </>
       )}
 
       {/* ─── Desktop table ─── */}
@@ -171,18 +196,32 @@ export function UsuariosTable({ initialUsuarios }: UsuariosTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Último acceso</TableHead>
-                <TableHead>Creado por</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("nombre")}>
+                  Nombre {SortIcon("nombre")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("email")}>
+                  Email {SortIcon("email")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("rol")}>
+                  Rol {SortIcon("rol")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("activo")}>
+                  Estado {SortIcon("activo")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("telefono")}>
+                  Teléfono {SortIcon("telefono")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("ultimoAcceso")}>
+                  Último acceso {SortIcon("ultimoAcceso")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("creadoPor")}>
+                  Creado por {SortIcon("creadoPor")}
+                </TableHead>
                 <TableHead className="w-28">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usuarios.map((usuario) => (
+              {sorted.map((usuario) => (
                 <TableRow key={usuario.id}>
                   <TableCell className="font-medium">
                     {usuario.nombre}

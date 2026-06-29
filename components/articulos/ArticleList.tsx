@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Package, Plus, RefreshCw } from "lucide-react";
+import { Package, Plus, RefreshCw } from "lucide-react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import type { Articulo } from "@/lib/generated/prisma/client";
 import {
   deleteArticuloAction,
@@ -33,21 +36,6 @@ import { roleGte } from "@/lib/auth/authorize";
 import { ArticleForm } from "@/components/articulos/ArticleForm";
 import { PurchaseModal } from "@/components/articulos/PurchaseModal";
 
-// ─── Sort icon helper ─────────────────────────────────
-
-function SortIcon({
-  field,
-  sortBy,
-  sortOrder,
-}: {
-  field: string;
-  sortBy: string;
-  sortOrder: string;
-}) {
-  if (sortBy !== field) return null;
-  return sortOrder === "asc" ? <ArrowUp className="inline size-3" /> : <ArrowDown className="inline size-3" />;
-}
-
 // ─── Types ──────────────────────────────────────────
 
 type FormMode = "closed" | "create" | "edit";
@@ -63,18 +51,27 @@ export function ArticleList({ userRole }: { userRole?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
 
-  // ── Sort ──
-  const [sortBy, setSortBy] = useState<"nombre" | "precio" | "stockActual" | "creadoEn">("nombre");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
-  const handleSort = (field: "nombre" | "precio" | "stockActual" | "creadoEn") => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-  };
+  // ── Sort config ──
+  const sortFields: SortFieldConfig<Articulo>[] = [
+    { key: "nombre", label: "Nombre", type: "string" },
+    { key: "categoria", label: "Categoría", type: "string" },
+    { key: "presentacion", label: "Presentación", type: "string" },
+    { key: "costo", label: "Costo", type: "number" },
+    { key: "precio", label: "Precio", type: "number" },
+    { key: "ganancia", label: "Ganancia", type: "number", accessor: (a: Articulo) => a.precio - a.costo },
+    { key: "stockActual", label: "Stock", type: "number" },
+    {
+      key: "estado",
+      label: "Estado",
+      type: "string",
+      accessor: (a: Articulo) => {
+        if (a.stockActual === 0) return "Sin Stock";
+        if (a.stockActual < a.stockMinimo) return "Stock Bajo";
+        return "Stock OK";
+      },
+    },
+    { key: "creadoEn", label: "Creado", type: "date" },
+  ];
 
   // ── Form dialog ──
   const [formMode, setFormMode] = useState<FormMode>("closed");
@@ -107,27 +104,24 @@ export function ArticleList({ userRole }: { userRole?: string }) {
     return () => clearTimeout(timer);
   }, [fetchArticulos]);
 
-  // ── Client-side filtering + sorting ──
-  const filtered = [...articulos]
-    .filter((a) => {
-      if (filtros.categoria && a.categoria !== filtros.categoria) return false;
-      if (filtros.presentacion && a.presentacion !== filtros.presentacion)
-        return false;
-      if (filtros.q) {
-        const q = filtros.q.toLowerCase();
-        if (!a.nombre.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const dir = sortOrder === "asc" ? 1 : -1;
-      switch (sortBy) {
-        case "precio": return (a.precio - b.precio) * dir;
-        case "stockActual": return (a.stockActual - b.stockActual) * dir;
-        case "creadoEn": return (a.creadoEn.getTime() - b.creadoEn.getTime()) * dir;
-        default: return a.nombre.localeCompare(b.nombre) * dir;
-      }
-    });
+  // ── Client-side filtering ──
+  const filtered = [...articulos].filter((a) => {
+    if (filtros.categoria && a.categoria !== filtros.categoria) return false;
+    if (filtros.presentacion && a.presentacion !== filtros.presentacion)
+      return false;
+    if (filtros.q) {
+      const q = filtros.q.toLowerCase();
+      if (!a.nombre.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // ── Client-side sorting ──
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: filtered,
+    config: sortFields,
+    defaultSortBy: "nombre",
+  });
 
   // ── Handlers ──
   const handleCreate = () => {
@@ -290,9 +284,12 @@ export function ArticleList({ userRole }: { userRole?: string }) {
         </div>
       )}
 
+      {/* ─── SortBar (mobile) ─── */}
+      <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+
       {/* ─── Grid view (mobile) ─── */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:hidden">
-        {filtered.map((articulo) => (
+        {sorted.map((articulo) => (
           <ArticleCard
             key={articulo.id}
             articulo={articulo}
@@ -309,24 +306,34 @@ export function ArticleList({ userRole }: { userRole?: string }) {
           <TableHeader>
             <TableRow>
               <TableHead className="cursor-pointer select-none" onClick={() => handleSort("nombre")}>
-                Nombre <SortIcon field="nombre" sortBy={sortBy} sortOrder={sortOrder} />
+                Nombre {SortIcon("nombre")}
               </TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Presentación</TableHead>
-              <TableHead>Costo</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("categoria")}>
+                Categoría {SortIcon("categoria")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("presentacion")}>
+                Presentación {SortIcon("presentacion")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("costo")}>
+                Costo {SortIcon("costo")}
+              </TableHead>
               <TableHead className="cursor-pointer select-none" onClick={() => handleSort("precio")}>
-                Precio <SortIcon field="precio" sortBy={sortBy} sortOrder={sortOrder} />
+                Precio {SortIcon("precio")}
               </TableHead>
-              <TableHead>Ganancia</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("ganancia")}>
+                Ganancia {SortIcon("ganancia")}
+              </TableHead>
               <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stockActual")}>
-                Stock <SortIcon field="stockActual" sortBy={sortBy} sortOrder={sortOrder} />
+                Stock {SortIcon("stockActual")}
               </TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("estado")}>
+                Estado {SortIcon("estado")}
+              </TableHead>
               <TableHead className="w-20">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((articulo) => (
+            {sorted.map((articulo) => (
               <ArticleRow
                 key={articulo.id}
                 articulo={articulo}

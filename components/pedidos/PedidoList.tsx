@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ShoppingCart, RefreshCw, Search, Package } from "lucide-react";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import { roleGte } from "@/lib/auth/authorize";
 import {
   getPedidosAction,
@@ -155,12 +158,22 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
     fetchPedidos();
   };
 
-  // ── Filtered data for display (client-side sort) ──
-  const sorted = useMemo(() => {
-    return [...pedidos].sort(
-      (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
-    );
-  }, [pedidos]);
+  // ── Sort config + client-side sorting ──
+  const sortFields: SortFieldConfig<PedidoListItem>[] = [
+    { key: "numeroPedido", label: "Pedido", type: "string" },
+    { key: "cliente", label: "Cliente", type: "string", accessor: (p: PedidoListItem) => p.cliente?.nombreCompleto ?? "" },
+    { key: "total", label: "Total", type: "number" },
+    { key: "estado", label: "Estado", type: "string" },
+    { key: "domiciliario", label: "Domiciliario", type: "string", accessor: (p: PedidoListItem) => p.domiciliario?.nombre ?? "", nullsLast: true },
+    { key: "fecha", label: "Fecha", type: "date" },
+  ];
+
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: pedidos,
+    config: sortFields,
+    defaultSortBy: "fecha",
+    defaultSortDir: "desc",
+  });
 
   // ── Loading state ──
   if (loading) {
@@ -276,6 +289,9 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
               </div>
             ) : (
               <>
+                {/* SortBar (mobile) */}
+                <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+
                 {/* Card view (mobile) */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
                   {disponibles.map((pedido) => (
@@ -310,10 +326,18 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Pedido</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Estado</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("numeroPedido")}>
+                          Pedido {SortIcon("numeroPedido")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("cliente")}>
+                          Cliente {SortIcon("cliente")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("total")}>
+                          Total {SortIcon("total")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("estado")}>
+                          Estado {SortIcon("estado")}
+                        </TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -366,6 +390,9 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
               </div>
             ) : (
               <>
+                {/* SortBar (mobile) */}
+                <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+
                 {/* Card view (mobile) */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
                   {misPedidos.map((pedido) => (
@@ -403,11 +430,21 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Pedido</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Fecha</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("numeroPedido")}>
+                          Pedido {SortIcon("numeroPedido")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("cliente")}>
+                          Cliente {SortIcon("cliente")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("total")}>
+                          Total {SortIcon("total")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("estado")}>
+                          Estado {SortIcon("estado")}
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => handleSort("fecha")}>
+                          Fecha {SortIcon("fecha")}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -593,6 +630,9 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
         </div>
       )}
 
+      {/* ─── SortBar (mobile) ─── */}
+      <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+
       {/* ─── Card view (mobile) ─── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
         {sorted.map((pedido) => (
@@ -637,12 +677,24 @@ export function PedidoList({ initialData, initialError, userRole }: PedidoListPr
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Pedido</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Domiciliario</TableHead>
-              <TableHead>Fecha</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("numeroPedido")}>
+                Pedido {SortIcon("numeroPedido")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("cliente")}>
+                Cliente {SortIcon("cliente")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("total")}>
+                Total {SortIcon("total")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("estado")}>
+                Estado {SortIcon("estado")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("domiciliario")}>
+                Domiciliario {SortIcon("domiciliario")}
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("fecha")}>
+                Fecha {SortIcon("fecha")}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

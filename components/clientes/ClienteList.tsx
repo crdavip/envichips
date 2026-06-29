@@ -4,8 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowDown,
-  ArrowUp,
   Calendar,
   Phone,
   Search,
@@ -23,6 +21,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSort } from "@/lib/hooks/useSort";
+import type { SortFieldConfig } from "@/lib/hooks/useSort";
+import { SortBar } from "@/components/ui/sort-controls";
 import { Badge } from "@/components/ui/badge";
 import {
   SelectRoot,
@@ -73,8 +74,6 @@ interface ClienteRow {
   creadoEn: Date;
 }
 
-type SortField = "nombreCompleto" | "creadoEn";
-
 interface ClienteFiltersState {
   nombre?: string;
   telefono?: string;
@@ -89,25 +88,6 @@ function DeudaBadge({ deuda }: { deuda: number }) {
     return <Badge variant="success">AL DÍA</Badge>;
   }
   return <Badge variant="destructive">EN DEUDA</Badge>;
-}
-
-// ─── Sort icon helper ─────────────────────────────────
-
-function SortIcon({
-  field,
-  sortBy,
-  sortOrder,
-}: {
-  field: string;
-  sortBy: string;
-  sortOrder: string;
-}) {
-  if (sortBy !== field) return null;
-  return sortOrder === "asc" ? (
-    <ArrowUp className="inline size-3" />
-  ) : (
-    <ArrowDown className="inline size-3" />
-  );
 }
 
 // ─── Format currency ─────────────────────────────────
@@ -144,18 +124,16 @@ export function ClienteList({ userRole }: ClienteListProps) {
   const [nombreSearch, setNombreSearch] = useState("");
   const [telefonoSearch, setTelefonoSearch] = useState("");
 
-  // ── Sort ──
-  const [sortBy, setSortBy] = useState<SortField>("nombreCompleto");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
-  const handleSort = (field: SortField) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-  };
+  // ── Sort config ──
+  const sortFields: SortFieldConfig<ClienteRow>[] = [
+    { key: "idCliente", label: "Código", type: "string" },
+    { key: "nombreCompleto", label: "Nombre", type: "string" },
+    { key: "telefono", label: "Teléfono", type: "string", nullsLast: true },
+    { key: "estado", label: "Estado", type: "string" },
+    { key: "deuda", label: "Deuda", type: "number" },
+    { key: "ultimaVisita", label: "Última Visita", type: "date", nullsLast: true },
+    { key: "creadoEn", label: "Registrado", type: "date" },
+  ];
 
   // ── Fetch clientes ──
   const fetchClientes = useCallback(async () => {
@@ -205,33 +183,30 @@ export function ClienteList({ userRole }: ClienteListProps) {
     return () => clearTimeout(timer);
   }, [fetchClientes]);
 
-  // ── Client-side filtering + sorting ──
-  const filtered = [...clientes]
-    .filter((c) => {
-      if (filters.nombre) {
-        const q = filters.nombre.toLowerCase();
-        if (!c.nombreCompleto.toLowerCase().includes(q)) return false;
-      }
-      if (filters.telefono) {
-        const q = filters.telefono.toLowerCase();
-        if (!c.telefono?.toLowerCase().includes(q)) return false;
-      }
-      if (filters.estado && c.estado !== filters.estado) return false;
-      if (filters.sinVisita) {
-        const dias = daysSince(c.ultimaVisita);
-        if (dias !== null && dias <= 7) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const dir = sortOrder === "asc" ? 1 : -1;
-      switch (sortBy) {
-        case "creadoEn":
-          return (a.creadoEn.getTime() - b.creadoEn.getTime()) * dir;
-        default:
-          return a.nombreCompleto.localeCompare(b.nombreCompleto) * dir;
-      }
-    });
+  // ── Client-side filtering ──
+  const filtered = [...clientes].filter((c) => {
+    if (filters.nombre) {
+      const q = filters.nombre.toLowerCase();
+      if (!c.nombreCompleto.toLowerCase().includes(q)) return false;
+    }
+    if (filters.telefono) {
+      const q = filters.telefono.toLowerCase();
+      if (!c.telefono?.toLowerCase().includes(q)) return false;
+    }
+    if (filters.estado && c.estado !== filters.estado) return false;
+    if (filters.sinVisita) {
+      const dias = daysSince(c.ultimaVisita);
+      if (dias !== null && dias <= 7) return false;
+    }
+    return true;
+  });
+
+  // ── Client-side sorting ──
+  const { sorted, sortBy, sortOrder, handleSort, SortIcon } = useSort({
+    data: filtered,
+    config: sortFields,
+    defaultSortBy: "nombreCompleto",
+  });
 
   // ── Filter handlers ──
   const handleNombreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -454,10 +429,12 @@ export function ClienteList({ userRole }: ClienteListProps) {
         </div>
       )}
 
-      {/* ─── Mobile cards ─── */}
+      {/* ─── SortBar (mobile) ─── */}
       {filtered.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-          {filtered.map((cliente) => (
+        <>
+          <SortBar fields={sortFields} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+          {sorted.map((cliente) => (
             <ClienteCard
               key={cliente.id}
               cliente={cliente}
@@ -467,6 +444,7 @@ export function ClienteList({ userRole }: ClienteListProps) {
             />
           ))}
         </div>
+        </>
       )}
 
       {/* ─── Desktop table ─── */}
@@ -475,38 +453,32 @@ export function ClienteList({ userRole }: ClienteListProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort("nombreCompleto")}
-                >
-                  Nombre{" "}
-                  <SortIcon
-                    field="nombreCompleto"
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                  />
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("idCliente")}>
+                  Código {SortIcon("idCliente")}
                 </TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Deuda</TableHead>
-                <TableHead>Última Visita</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort("creadoEn")}
-                >
-                  Registrado{" "}
-                  <SortIcon
-                    field="creadoEn"
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                  />
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("nombreCompleto")}>
+                  Nombre {SortIcon("nombreCompleto")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("telefono")}>
+                  Teléfono {SortIcon("telefono")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("estado")}>
+                  Estado {SortIcon("estado")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("deuda")}>
+                  Deuda {SortIcon("deuda")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("ultimaVisita")}>
+                  Última Visita {SortIcon("ultimaVisita")}
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort("creadoEn")}>
+                  Registrado {SortIcon("creadoEn")}
                 </TableHead>
                 <TableHead className="w-28">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((cliente) => (
+              {sorted.map((cliente) => (
                 <ClienteRowDesktop
                   key={cliente.id}
                   cliente={cliente}
