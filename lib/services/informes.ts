@@ -372,6 +372,7 @@ export async function getResumenDomiciliario(
         domiciliarioId: userId,
         estado: "ENTREGADO",
         estadoCobro: { not: "COBRADO" },
+        metodoPago: { not: "FIADO" },
         fecha: { gte: today, lt: tomorrow },
       },
       _count: true,
@@ -455,7 +456,7 @@ export async function getDomiciliarios(
       if (p.metodoPago === "TRANSFERENCIA" && p.montoCobrado) {
         row.transferencias += p.montoCobrado;
       }
-      if (p.estadoCobro !== "COBRADO") {
+      if (p.estadoCobro !== "COBRADO" && p.metodoPago !== "FIADO") {
         row.totalACobrarAdmin += p.total;
       }
     }
