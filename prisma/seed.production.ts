@@ -132,6 +132,23 @@ const allProducts = [...products, ...otrorods];
 export async function main() {
   console.log("🌱 Seeding Envichips production database...\n");
 
+  // ── 0. Cleanup: delete all demo data in reverse dependency order ──
+  console.log("🧹 Cleaning demo data...");
+  const adminEmail = process.env.ADMIN_EMAIL || "julianflorez2019@gmail.com";
+
+  await db.pedidoItem.deleteMany();
+  await db.historialEstado.deleteMany();
+  await db.pedido.deleteMany();
+  await db.abono.deleteMany();
+  await db.registroVisita.deleteMany();
+  await db.compraItem.deleteMany();
+  await db.compra.deleteMany();
+  await db.movimiento.deleteMany();
+  await db.cliente.deleteMany();
+  // Delete all users except the SUPERADMIN we're about to create
+  await db.user.deleteMany({ where: { email: { not: adminEmail } } });
+  console.log("  ✓ Demo data cleaned (clientes, pedidos, compras, movimientos, abonos, users)\n");
+
   // ── 1. Business Config ──
   console.log("📋 Business Config...");
   await db.businessConfig.upsert({
@@ -168,7 +185,6 @@ export async function main() {
 
   // ── 4. SUPERADMIN ──
   console.log("\n👤 SUPERADMIN...");
-  const adminEmail = process.env.ADMIN_EMAIL || "julianflorez2019@gmail.com";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
