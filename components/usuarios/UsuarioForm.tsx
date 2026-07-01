@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import {
   createUsuarioAction,
   updateUsuarioAction,
@@ -65,6 +66,7 @@ export function UsuarioForm({
   // ── Controlled field values ──
   const [nombre, setNombre] = useState(initialData?.nombre ?? "");
   const [email, setEmail] = useState(initialData?.email ?? "");
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState<string | undefined>(
     initialData?.rol ?? undefined,
@@ -176,17 +178,28 @@ export function UsuarioForm({
         <Label htmlFor="usuario-password">
           {mode === "create" ? "Contraseña *" : "Contraseña (opcional)"}
         </Label>
-        <Input
-          id="usuario-password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass("password")}
-          placeholder={
-            mode === "edit" ? "••••••••" : "Mínimo 6 caracteres"
-          }
-        />
+        <div className="relative">
+          <Input
+            id="usuario-password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={cn("pr-9", inputClass("password"))}
+            placeholder={
+              mode === "edit" ? "••••••••" : "Mínimo 6 caracteres"
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            tabIndex={-1}
+            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
         {mode === "edit" && (
           <p className="text-xs text-muted-foreground">
             Dejá en blanco para mantener la contraseña actual
