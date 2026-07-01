@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getConfig } from "@/lib/services/configuracion";
 import { ConfigForm } from "@/components/configuracion/ConfigForm";
+import { ChangePasswordForm } from "@/components/configuracion/ChangePasswordForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -11,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Settings, Construction } from "lucide-react";
+import { Settings } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Configuración | Envichips",
@@ -33,31 +34,21 @@ async function ConfiguracionContent() {
     const config = await getConfig();
 
     return (
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>Configuración del Negocio</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ConfigForm initialData={config} />
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>Configuración del Negocio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ConfigForm initialData={config} />
+          </CardContent>
+        </Card>
+        <ChangePasswordForm />
+      </div>
     );
   }
 
-  // Placeholder para ADMIN y DOMICILIARIO — contenido próximamente
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 py-20">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/5 text-primary/40">
-        <Construction className="size-7" />
-      </span>
-      <p className="text-sm font-medium text-foreground">
-        Configuración de usuario
-      </p>
-      <p className="text-xs text-muted-foreground">
-        Próximamente podrás cambiar tu contraseña y preferencias acá
-      </p>
-    </div>
-  );
+  return <ChangePasswordForm />;
 }
 
 function ConfiguracionSkeleton() {

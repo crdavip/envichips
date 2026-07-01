@@ -19,5 +19,19 @@ export const updateUsuarioSchema = z.object({
   telefono: z.string().optional(),
 });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Contraseña actual requerida"),
+    newPassword: z.string().min(6, "Mínimo 6 caracteres"),
+    confirmPassword: z
+      .string()
+      .min(1, "Debe confirmar la nueva contraseña"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  });
+
 export type CreateUsuarioInput = z.output<typeof createUsuarioSchema>;
 export type UpdateUsuarioInput = z.output<typeof updateUsuarioSchema>;
+export type ChangePasswordInput = z.output<typeof changePasswordSchema>;

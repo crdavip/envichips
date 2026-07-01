@@ -94,6 +94,33 @@ export async function updateUsuario(id: string, data: UpdateUsuarioInput) {
   });
 }
 
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { password: true },
+  });
+
+  if (!user) {
+    throw new Error("Contraseña actual incorrecta");
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    throw new Error("Contraseña actual incorrecta");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await db.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword },
+  });
+}
+
 export async function toggleUsuarioActivo(
   id: string,
   usuarioLogueadoId: string,

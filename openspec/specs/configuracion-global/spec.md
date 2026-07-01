@@ -1,6 +1,6 @@
 # Configuración Global del Negocio — SDD Spec
 
-> Configuración global del negocio (nombre, teléfono para factura). Solo accesible para SUPERADMIN.
+> Configuración global del negocio (nombre, teléfono para factura). Accesible para SUPERADMIN con formulario de configuración; ADMIN y DOMICILIARIO acceden solo para cambio de contraseña.
 
 ## Modelo de Datos
 
@@ -49,8 +49,11 @@ Los datos de configuración DEBEN estar disponibles para:
 
 ### RF-04: Seguridad
 
-- Solo usuarios con rol SUPERADMIN pueden ver o editar la configuración
-- La ruta `/configuracion` DEBE redirigir o mostrar "No autorizado" para ADMIN y DOMICILIARIO
+- SUPERADMIN DEBE poder ver y editar la configuración del negocio Y cambiar su propia contraseña desde `/configuracion`
+- ADMIN y DOMICILIARIO DEBEN poder cambiar su propia contraseña pero NO DEBEN ver ni editar la configuración del negocio
+- `/configuracion` NO DEBE denegar acceso a ningún rol autenticado
+- La visibilidad de formularios se determina por rol: ConfigForm solo para SUPERADMIN, ChangePasswordForm para todos los roles
+(Previously: Solo SUPERADMIN podía acceder a /configuracion; ADMIN y DOMICILIARIO recibían "No autorizado")
 
 ## Escenarios de Aceptación
 
@@ -75,12 +78,29 @@ Then: Se actualiza el nombre
   AND actualizadoPorId contiene el ID del SUPERADMIN
 ```
 
-### Escenario 3: Admin intenta acceder
-```
-Given: Usuario logueado con rol ADMIN
-When: Navega a /configuracion
-Then: Muestra "No autorizado"
-```
+### Escenario 3: Admin ve formulario de cambio de contraseña
+
+- GIVEN Usuario autenticado con rol ADMIN
+- WHEN Navega a `/configuracion`
+- THEN Ve el formulario de cambio de contraseña
+- AND NO ve el formulario de configuración del negocio
+- AND Puede cambiar su contraseña exitosamente
+
+### Escenario 4: Domiciliario ve formulario de cambio de contraseña
+
+- GIVEN Usuario autenticado con rol DOMICILIARIO
+- WHEN Navega a `/configuracion`
+- THEN Ve el formulario de cambio de contraseña
+- AND NO ve el formulario de configuración del negocio
+- AND Puede cambiar su contraseña exitosamente
+
+### Escenario 5: SuperAdmin ve ambos formularios
+
+- GIVEN Usuario autenticado con rol SUPERADMIN
+- WHEN Navega a `/configuracion`
+- THEN Ve el formulario de configuración del negocio
+- AND Ve el formulario de cambio de contraseña
+- AND Puede cambiar su contraseña exitosamente
 
 ## Technical Notes
 
