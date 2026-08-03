@@ -92,6 +92,17 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
     return current !== initial;
   };
 
+  // Check if any field has changed (for disabling submit button in edit mode)
+  const hasChanges = mode === "create" || [
+    ["nombre", nombre] as [string, unknown],
+    ["categoria", categoria] as [string, unknown],
+    ["presentacion", presentacion] as [string, unknown],
+    ["costo", costo] as [string, unknown],
+    ["precio", precio] as [string, unknown],
+    ["stockMinimo", stockMinimo] as [string, unknown],
+    ["stockActual", stockActual] as [string, unknown],
+  ].some(([field, value]) => isDirty(field, value));
+
   // ── useActionState ──
   const [formState, formAction, isPending] = useActionState(
     async (_prev: FormState, formData: FormData): Promise<FormState> => {
@@ -111,6 +122,11 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
         : Object.fromEntries(
             Object.entries(rawFull).filter(([key, value]) => isDirty(key, value)),
           ) as typeof rawFull;
+
+      // Skip submission if no fields changed (edit mode)
+      if (mode === "edit" && Object.keys(raw).length === 0) {
+        return { errors: {}, serverError: null, success: true };
+      }
 
       // Client-side validation
       const schema = mode === "create" ? createArticuloSchema : updateArticuloSchema;
@@ -347,7 +363,7 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
           <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || (mode === "edit" && !hasChanges)}>
             {isPending ? "Guardando…" : mode === "create" ? "Crear Artículo" : "Guardar"}
           </Button>
         </div>

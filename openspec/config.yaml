@@ -9,7 +9,7 @@ context: |
   UI: Tailwind CSS utility classes, dark mode support, custom CSS variables
   Auth: NextAuth.js v5 with JWT httpOnly cookies, role-based (SuperAdmin/Admin/Domiciliario)
   Persistence: openspec (file-based)
-  Strict TDD: false (no test runner configured yet)
+  Strict TDD: true (vitest detected — test runner: `npm run test`, coverage: `npx vitest run --coverage`)
 
 rules:
   proposal:
@@ -32,10 +32,10 @@ rules:
   apply:
     - Follow existing code patterns in the project
     - Never commit directly; use feature branches
-    tdd: false
-    test_command: ""
+    tdd: true
+    test_command: "npm run test"
   verify:
-    test_command: ""
+    test_command: "npm run test"
     build_command: "npm run build"
     coverage_threshold: 0
   archive:
@@ -43,22 +43,22 @@ rules:
     - Update main specs after archiving
 
 testing:
-  strict_tdd: false
-  reason: "No test runner detected in package.json. No test files (*.test.*, *.spec.*, __tests__/) found in the project. Add vitest or jest before enabling strict TDD."
-  test_runner: null
+  strict_tdd: true
+  reason: "Vitest detected in package.json (vitest ^4.1.8) with vitest.config.ts. Test command: `npm run test` (vitest run). No test files exist yet (*.test.*, *.spec.*) but the runner is fully configured with jsdom environment and React Testing Library."
+  test_runner: "npm run test"
   test_layers:
     unit:
-      available: false
-      tool: null
+      available: true
+      tool: "vitest"
     integration:
-      available: false
-      tool: null
+      available: true
+      tool: "vitest + jsdom"
     e2e:
       available: false
       tool: null
   coverage:
-    available: false
-    command: null
+    available: true
+    command: "npx vitest run --coverage"
   quality_tools:
     linter:
       available: true

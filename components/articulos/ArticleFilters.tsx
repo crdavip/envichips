@@ -76,6 +76,7 @@ export function getStockStatus(articulo: Articulo): StockStatusFilter {
 
 function getActiveFilterCount(filters: ArticleFiltersState): number {
   let count = 0;
+  if (filters.categoria) count++;
   if (filters.presentacion) count++;
   if (filters.activo !== undefined) count++;
   if (filters.stockStatus) count++;
@@ -115,6 +116,9 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Local state for drawer fields (committed on "Aplicar")
+  const [localCategoria, setLocalCategoria] = useState<Categoria | undefined>(
+    filters.categoria,
+  );
   const [localPresentacion, setLocalPresentacion] = useState<Presentacion | undefined>(
     filters.presentacion,
   );
@@ -129,6 +133,7 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
 
   // Sync local state when filters change externally
   useEffect(() => {
+    setLocalCategoria(filters.categoria);
     setLocalPresentacion(filters.presentacion);
     setLocalActivo(filters.activo === undefined ? "todos" : filters.activo ? "activo" : "inactivo");
     setLocalStockStatus(filters.stockStatus);
@@ -159,6 +164,7 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
   const handleApplyFilters = () => {
     onChange({
       ...filters,
+      categoria: localCategoria,
       presentacion: localPresentacion,
       activo: localActivo === "todos" ? undefined : localActivo === "activo",
       stockStatus: localStockStatus,
@@ -169,10 +175,8 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
   };
 
   const handleClearAll = () => {
-    onChange({
-      categoria: filters.categoria,
-      q: filters.q,
-    });
+    onChange({ q: filters.q });
+    setLocalCategoria(undefined);
     setLocalPresentacion(undefined);
     setLocalActivo("todos");
     setLocalStockStatus(undefined);
@@ -213,7 +217,7 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
 
   return (
     <div className="space-y-3">
-      {/* ─── Top bar: search + categoría (always visible) + filtros button ─── */}
+      {/* ─── Top bar: search + filtros button ─── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         {/* Search */}
         <div className="flex flex-1 flex-col gap-1.5">
@@ -227,36 +231,6 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
               className="pl-8"
             />
           </div>
-        </div>
-
-        {/* Categoría (always visible per user choice) */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Categoría</label>
-          <SelectRoot
-            value={filters.categoria ?? "__all__"}
-            onValueChange={(value) =>
-              onChange({
-                ...filters,
-                categoria: value === "__all__" ? undefined : (value as Categoria),
-              })
-            }
-          >
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Todas">
-                {filters.categoria ?? "Todas"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              <SelectList>
-                <SelectItem value="__all__">Todas</SelectItem>
-                {CATEGORIAS.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectList>
-            </SelectPopup>
-          </SelectRoot>
         </div>
 
         {/* Filtros button */}
@@ -318,6 +292,35 @@ export function ArticleFilters({ filters, onChange, articulos }: ArticleFiltersP
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Categoría */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium">Categoría</label>
+              <SelectRoot
+                value={localCategoria ?? "__all__"}
+                onValueChange={(value) =>
+                  setLocalCategoria(
+                    value === "__all__" ? undefined : (value as Categoria),
+                  )
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todas">
+                    {localCategoria ?? "Todas"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  <SelectList>
+                    <SelectItem value="__all__">Todas</SelectItem>
+                    {CATEGORIAS.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectList>
+                </SelectPopup>
+              </SelectRoot>
+            </div>
+
             {/* Presentación */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Presentación</label>
