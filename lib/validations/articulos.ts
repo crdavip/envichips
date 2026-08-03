@@ -53,7 +53,22 @@ export const createArticuloSchema = articuloBaseSchema.refine(
   },
 );
 
-export const updateArticuloSchema = articuloBaseSchema.partial();
+// Update: partial — every field is optional, including stockActual for manual adjustments
+// Conditional refine: precio > costo only when BOTH fields are present in the payload
+export const updateArticuloSchema = articuloBaseSchema.extend({
+  stockActual: z.number().int().min(0, "El stock no puede ser negativo").optional(),
+}).partial().refine(
+  (data) => {
+    if (data.precio !== undefined && data.costo !== undefined) {
+      return data.precio > data.costo;
+    }
+    return true;
+  },
+  {
+    message: "El precio debe ser mayor al costo",
+    path: ["precio"],
+  },
+);
 
 export const purchaseItemSchema = z.object({
   articuloId: z.string().uuid(),
