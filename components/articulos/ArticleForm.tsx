@@ -79,20 +79,38 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
   const [costo, setCosto] = useState(initialData?.costo ?? 0);
   const [precio, setPrecio] = useState(initialData?.precio ?? 0);
   const [stockMinimo, setStockMinimo] = useState(initialData?.stockMinimo ?? 0);
+  // Stock adjustment — edit mode only
+  const [stockActual, setStockActual] = useState<number | undefined>(initialData?.stockActual);
 
   const ganancia = precio - costo;
+
+  // ── Dirty tracking for partial updates (edit mode) ──
+  const isDirty = (field: string, current: unknown): boolean => {
+    if (mode === "create") return true; // all fields required on create
+    if (!initialData) return true;
+    const initial = (initialData as Record<string, unknown>)[field];
+    return current !== initial;
+  };
 
   // ── useActionState ──
   const [formState, formAction, isPending] = useActionState(
     async (_prev: FormState, formData: FormData): Promise<FormState> => {
-      const raw = {
+      const rawFull = {
         nombre: (formData.get("nombre") as string) ?? "",
         categoria: (formData.get("categoria") as Categoria) ?? "",
         presentacion: (formData.get("presentacion") as Presentacion) ?? "",
         costo: Number(formData.get("costo")) || 0,
         precio: Number(formData.get("precio")) || 0,
         stockMinimo: Number(formData.get("stockMinimo")) || 0,
+        stockActual: Number(formData.get("stockActual")) || 0,
       };
+
+      // Build payload: all fields on create, only dirty fields on edit
+      const raw = mode === "create"
+        ? rawFull
+        : Object.fromEntries(
+            Object.entries(rawFull).filter(([key, value]) => isDirty(key, value)),
+          ) as typeof rawFull;
 
       // Client-side validation
       const schema = mode === "create" ? createArticuloSchema : updateArticuloSchema;
@@ -160,6 +178,7 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
       <input type="hidden" name="presentacion" value={presentacion ?? ""} />
       <input type="hidden" name="costo" value={costo} />
       <input type="hidden" name="precio" value={precio} />
+      {mode === "edit" && <input type="hidden" name="stockActual" value={stockActual ?? 0} />}
 
       {/* ── Nombre ── */}
       <div className="flex flex-col gap-1.5">
@@ -281,6 +300,25 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
         />
         {fieldError("stockMinimo")}
       </div>
+
+      {/* ── Stock Actual (edit mode only) ── */}
+      {mode === "edit" && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="articulo-stockActual">Stock Actual</Label>
+          <Input
+            id="articulo-stockActual"
+            type="number"
+            min={0}
+            value={stockActual ?? 0}
+            onChange={(e) => setStockActual(Math.max(0, Number(e.target.value)))}
+            className={inputClass("stockActual")}
+          />
+          {fieldError("stockActual")}
+          <p className="text-xs text-muted-foreground">
+            Los ajustes manuales de stock no aparecen en el historial de compras/pedidos.
+          </p>
+        </div>
+      )}
 
       {/* ── Server error ── */}
       {formState.serverError && (
