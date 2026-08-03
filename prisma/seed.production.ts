@@ -3,14 +3,7 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import bcrypt from "bcryptjs";
-
-function normalizeConnectionString(url: string): string {
-  if (url.includes("sslmode=")) {
-    return url.replace(/sslmode=\w+/g, "sslmode=verify-full");
-  }
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}sslmode=verify-full`;
-}
+import { normalizeConnectionString } from "../lib/connection";
 
 const pool = new Pool({
   connectionString: normalizeConnectionString(process.env.DATABASE_URL ?? ""),
