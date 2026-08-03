@@ -83,6 +83,9 @@ export async function updateArticulo(id: string, data: UpdateArticuloInput) {
       ...(data.stockMinimo !== undefined && {
         stockMinimo: data.stockMinimo,
       }),
+      ...(data.stockActual !== undefined && {
+        stockActual: data.stockActual,
+      }),
     },
   });
 }
