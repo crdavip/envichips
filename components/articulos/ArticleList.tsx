@@ -373,6 +373,7 @@ export function ArticleList({ userRole }: { userRole?: string }) {
           <DialogClose onClick={handleFormClose} />
 
           <ArticleForm
+            key={editingArticulo?.id ?? "new"}
             mode={formMode === "create" ? "create" : "edit"}
             initialData={editingArticulo ?? undefined}
             onSuccess={handleFormSuccess}
