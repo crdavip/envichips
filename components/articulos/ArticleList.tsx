@@ -28,8 +28,8 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
-import { ArticleFilters } from "@/components/articulos/ArticleFilters";
-import type { ArticleFiltersState } from "@/components/articulos/ArticleFilters";
+import { ArticleFilters, getStockStatus } from "@/components/articulos/ArticleFilters";
+import type { ArticleFiltersState, StockStatusFilter } from "@/components/articulos/ArticleFilters";
 import { ArticleCard } from "@/components/articulos/ArticleCard";
 import { ArticleRow } from "@/components/articulos/ArticleRow";
 import { roleGte } from "@/lib/auth/authorize";
@@ -65,9 +65,8 @@ export function ArticleList({ userRole }: { userRole?: string }) {
       label: "Estado",
       type: "string",
       accessor: (a: Articulo) => {
-        if (a.stockActual === 0) return "Sin Stock";
-        if (a.stockActual < a.stockMinimo) return "Stock Bajo";
-        return "Stock OK";
+        const status = getStockStatus(a);
+        return status === "sin-stock" ? "Sin Stock" : status === "bajo" ? "Stock Bajo" : "Stock OK";
       },
     },
     { key: "creadoEn", label: "Creado", type: "date" },
@@ -107,12 +106,21 @@ export function ArticleList({ userRole }: { userRole?: string }) {
   // ── Client-side filtering ──
   const filtered = [...articulos].filter((a) => {
     if (filtros.categoria && a.categoria !== filtros.categoria) return false;
-    if (filtros.presentacion && a.presentacion !== filtros.presentacion)
-      return false;
+    if (filtros.presentacion && a.presentacion !== filtros.presentacion) return false;
     if (filtros.q) {
       const q = filtros.q.toLowerCase();
       if (!a.nombre.toLowerCase().includes(q)) return false;
     }
+    // Activo filter
+    if (filtros.activo !== undefined && a.activo !== filtros.activo) return false;
+    // Stock status filter
+    if (filtros.stockStatus) {
+      const status = getStockStatus(a);
+      if (status !== filtros.stockStatus) return false;
+    }
+    // Price range filter
+    if (filtros.precioMin !== undefined && a.precio < filtros.precioMin) return false;
+    if (filtros.precioMax !== undefined && a.precio > filtros.precioMax) return false;
     return true;
   });
 
@@ -239,7 +247,7 @@ export function ArticleList({ userRole }: { userRole?: string }) {
       </div>
 
       {/* ─── Filters ─── */}
-      <ArticleFilters filters={filtros} onChange={setFiltros} />
+      <ArticleFilters filters={filtros} onChange={setFiltros} articulos={articulos} />
 
       {/* ─── Refetch button (on error with existing data) ─── */}
       {error && (
