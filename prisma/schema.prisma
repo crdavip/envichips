@@ -180,6 +180,7 @@ model Pedido {
   creadoEn           DateTime         @default(now())
   items              PedidoItem[]
   historialEstados   HistorialEstado[]
+  movimiento         Movimiento?
 }
 
 model PedidoItem {
@@ -259,6 +260,7 @@ enum CategoriaMovimiento {
   COBRO_CARTERA
   PRESTAMO
   OTRO
+  VENTA_PEDIDO
 }
 
 model Movimiento {
@@ -275,6 +277,8 @@ model Movimiento {
   eliminadoEn      DateTime?
   eliminadoPorId   String?
   motivoEliminacion String?
+  pedidoId         String?            @unique
+  pedido           Pedido?            @relation(fields: [pedidoId], references: [id])
 }
 
 // ─── CONFIGURACIÓN DEL NEGOCIO ─────────────────────

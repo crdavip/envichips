@@ -40,6 +40,7 @@ const CATEGORIA_LABEL: Record<string, string> = {
   COBRO_CARTERA: "Cobro Cartera",
   PRESTAMO: "Préstamo",
   OTRO: "Otro",
+  VENTA_PEDIDO: "Venta Pedido",
 };
 
 const METODO_PAGO_LABEL: Record<string, string> = {

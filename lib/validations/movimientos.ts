@@ -10,6 +10,7 @@ export const CategoriaMovimientoEnum = z.enum([
   "COBRO_CARTERA",
   "PRESTAMO",
   "OTRO",
+  "VENTA_PEDIDO",
 ]);
 
 export const MetodoPagoEnum = z.enum(["EFECTIVO", "TRANSFERENCIA", "FIADO"]);
