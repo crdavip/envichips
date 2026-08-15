@@ -6,6 +6,8 @@ import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPedidoByIdAction } from "@/app/(dashboard)/pedidos/actions";
+import { getConfigAction } from "@/app/(dashboard)/configuracion/actions";
+import type { BusinessConfigData } from "@/lib/services/configuracion";
 import { formatCOP } from "@/lib/format";
 import { IsoType } from "@/components/logo/isotype";
 import { LogoType } from "@/components/logo/logotype";
@@ -46,18 +48,26 @@ function formatFecha(dateStr: string): string {
 export default function ImprimirPage({ params }: Props) {
   const { id } = use(params);
   const [pedido, setPedido] = useState<PedidoData | null>(null);
+  const [config, setConfig] = useState<BusinessConfigData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Fetch data on mount
   useEffect(() => {
     startTransition(async () => {
-      const result = await getPedidoByIdAction(id);
-      if ("error" in result) {
-        setError(result.error);
+      const [pedidoResult, configResult] = await Promise.all([
+        getPedidoByIdAction(id),
+        getConfigAction(),
+      ]);
+      if ("error" in pedidoResult) {
+        setError(pedidoResult.error);
         return;
       }
-      setPedido(result.data as unknown as PedidoData);
+      setPedido(pedidoResult.data as unknown as PedidoData);
+      // Config is optional on the invoice — a fetch failure just omits the phone
+      if ("data" in configResult) {
+        setConfig(configResult.data);
+      }
     });
   }, [id]);
 
@@ -146,6 +156,11 @@ export default function ImprimirPage({ params }: Props) {
                     />
                   </div>
                 </div>
+                {config?.telefonoFactura && (
+                  <p className="print-phone mt-1 text-center text-sm text-muted-foreground sm:text-left">
+                    Tel: {config.telefonoFactura}
+                  </p>
+                )}
               </div>
 
               <hr className="print-divider my-6" />

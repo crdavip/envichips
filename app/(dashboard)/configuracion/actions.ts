@@ -3,12 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { requireRole, requireAuth } from "@/lib/auth/authorize";
-import { upsertConfig } from "@/lib/services/configuracion";
+import { getConfig, upsertConfig } from "@/lib/services/configuracion";
+import type { BusinessConfigData } from "@/lib/services/configuracion";
 import { changePassword } from "@/lib/services/usuarios";
 import { configSchema } from "@/lib/validations/configuracion";
 import { changePasswordSchema } from "@/lib/validations/usuarios";
 import type { ConfigInput } from "@/lib/validations/configuracion";
 import type { ChangePasswordInput } from "@/lib/validations/usuarios";
+
+// ─── QUERIES ─────────────────────────────────────
+
+export async function getConfigAction(): Promise<
+  { data: BusinessConfigData } | { error: string }
+> {
+  const session = await auth();
+  const authError = requireAuth(session?.user);
+  if (authError) return { error: authError };
+
+  try {
+    const data = await getConfig();
+    return { data };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Error al obtener la configuración",
+    };
+  }
+}
 
 // ─── MUTATIONS ────────────────────────────────────
 

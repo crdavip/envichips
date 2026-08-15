@@ -194,6 +194,8 @@ export function ArticleForm({ mode, initialData, onSuccess, onCancel }: ArticleF
       <input type="hidden" name="presentacion" value={presentacion ?? ""} />
       <input type="hidden" name="costo" value={costo} />
       <input type="hidden" name="precio" value={precio} />
+      {/* stockMinimo is a controlled state value (no `name` on the visible input) */}
+      <input type="hidden" name="stockMinimo" value={stockMinimo} />
       {mode === "edit" && <input type="hidden" name="stockActual" value={stockActual ?? 0} />}
 
       {/* ── Nombre ── */}
