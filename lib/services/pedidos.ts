@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
+import { Prisma } from "@/lib/generated/prisma/client";
 import type {
   EstadoPedido,
   EstadoCobro,
-  Prisma,
+  MetodoPago,
 } from "@/lib/generated/prisma/client";
 import type {
   CreatePedidoInput,
@@ -174,6 +175,51 @@ async function generarNumeroPedido(
   });
 
   return `ENV-${year}-${String(sequence.counter).padStart(5, "0")}`;
+}
+
+// ─── CAJA SYNC ─────────────────────────────────────
+
+/**
+ * Create the auto caja INGRESO for a collected pedido (ENTREGADO + cobrado).
+ * Transaction-scoped: uses `tx.movimiento.*` directly because `createMovimiento`
+ * in movimientos.ts binds to the global `db` and cannot run inside a transaction.
+ *
+ * Idempotency: existence check via unique `pedidoId` + the DB unique constraint
+ * as race backstop (P2002 → log + swallow; the findUnique guard makes it
+ * unreachable in practice).
+ */
+async function crearMovimientoPedido(
+  tx: Prisma.TransactionClient,
+  pedido: { id: string; numeroPedido: string; metodoPago: MetodoPago },
+  monto: number,
+  registradoPorId: string,
+): Promise<void> {
+  const existente = await tx.movimiento.findUnique({
+    where: { pedidoId: pedido.id },
+  });
+  if (existente) return;
+
+  try {
+    await tx.movimiento.create({
+      data: {
+        tipo: "INGRESO",
+        categoria: "VENTA_PEDIDO",
+        monto,
+        descripcion: `Venta pedido ${pedido.numeroPedido}`,
+        metodoPago: pedido.metodoPago,
+        registradoPorId,
+        pedidoId: pedido.id,
+      },
+    });
+  } catch (err) {
+    // Unique-constraint backstop: a concurrent delivery could create the
+    // movimiento between findUnique and create. Idempotency wins — swallow.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      console.warn(`Movimiento ya existe para pedido ${pedido.id}; sync omitido`);
+      return;
+    }
+    throw err;
+  }
 }
 
 // ─── CREATE ────────────────────────────────────────
@@ -368,6 +414,17 @@ export async function actualizarEstado(
             userId: user.id,
           },
         });
+      }
+
+      // Auto-create caja INGRESO when the pedido was collected:
+      // EFECTIVO con dinero cobrado, o TRANSFERENCIA. FIADO y EFECTIVO sin
+      // cobrar NO tocan caja (deuda se rastrea vía cliente).
+      const cobroEfectivo =
+        pedido.metodoPago === "EFECTIVO" && data.dineroCobrado === true;
+      const cobroTransferencia = pedido.metodoPago === "TRANSFERENCIA";
+      if (cobroEfectivo || cobroTransferencia) {
+        const montoCobrado = data.montoCobrado ?? pedido.total;
+        await crearMovimientoPedido(tx, pedido, montoCobrado, user.id);
       }
     }
 
