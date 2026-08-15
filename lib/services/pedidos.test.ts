@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { UpdateEstadoInput } from "@/lib/validations/pedidos";
-import { actualizarEstado, confirmarCobroAdmin } from "./pedidos";
+import { actualizarEstado, confirmarCobroAdmin, cancelarPedido } from "./pedidos";
 
 // ─── Mocks ─────────────────────────────────────────
 // The sync helper must use `tx.movimiento.*` (transaction-scoped), never the
@@ -24,7 +24,11 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
     },
   },
-  db: { $transaction: vi.fn() },
+  db: {
+    $transaction: vi.fn(),
+    // cancelarPedido reads the pedido through the GLOBAL db (not tx) first
+    pedido: { findUniqueOrThrow: vi.fn() },
+  },
 }));
 
 vi.mock("@/lib/db", () => ({ db: mocks.db }));
@@ -169,5 +173,37 @@ describe("confirmarCobroAdmin → caja sync", () => {
 
     expect(mocks.tx.movimiento.create).not.toHaveBeenCalled();
     expect(mocks.tx.movimiento.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("cancelarPedido → caja sync", () => {
+  it("2.7 cancelling a pedido (CANCELADO) creates no movimiento — sync only fires on ENTREGADO", async () => {
+    mocks.db.pedido.findUniqueOrThrow.mockResolvedValue({
+      id: "pedido-1",
+      estado: "PENDIENTE",
+    });
+    mocks.tx.pedido.update.mockResolvedValue({ id: "pedido-1", estado: "CANCELADO" });
+    mocks.tx.historialEstado.create.mockResolvedValue({});
+
+    await cancelarPedido("pedido-1", "cliente canceló el pedido", "user-1");
+
+    // The cancellation path must never touch caja
+    expect(mocks.tx.movimiento.create).not.toHaveBeenCalled();
+    expect(mocks.tx.movimiento.findUnique).not.toHaveBeenCalled();
+
+    // It still performs the cancellation bookkeeping
+    expect(mocks.tx.pedido.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ estado: "CANCELADO" }),
+      }),
+    );
+    expect(mocks.tx.historialEstado.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          estadoDespues: "CANCELADO",
+          motivo: "cliente canceló el pedido",
+        }),
+      }),
+    );
   });
 });

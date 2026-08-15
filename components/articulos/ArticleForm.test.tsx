@@ -44,6 +44,32 @@ vi.mock("@/components/ui/select", async () => {
   };
 });
 
+// Full Articulo shape so `initialData` satisfies the prop type in edit mode.
+const EDIT_ARTICLE = {
+  id: "art-1",
+  nombre: "Papas Limón",
+  categoria: "PAPA" as const,
+  presentacion: "G50" as const,
+  costo: 1000,
+  precio: 2000,
+  stockActual: 20,
+  stockMinimo: 5,
+  activo: true,
+  creadoEn: new Date("2026-01-01T00:00:00.000Z"),
+  pedidoItems: [],
+  compraItems: [],
+};
+
+function renderEditMode(overrides: Record<string, unknown> = {}) {
+  render(<ArticleForm mode="edit" initialData={{ ...EDIT_ARTICLE, ...overrides }} />);
+}
+
+function hiddenInputValue(name: string): string {
+  const input = document.querySelector(`input[name="${name}"]`) as HTMLInputElement | null;
+  if (!input) throw new Error(`hidden input [name="${name}"] not found`);
+  return input.value;
+}
+
 async function fillFormAndSubmit(stockMinimo: string) {
   render(<ArticleForm mode="create" />);
 
@@ -85,5 +111,54 @@ describe("ArticleForm → stockMinimo transport", () => {
     expect(actionsMock.createArticuloAction).toHaveBeenCalledWith(
       expect.objectContaining({ stockMinimo: 10 }),
     );
+  });
+
+  it("3.2 edit mode: changing stockMinimo syncs the hidden input and submits the new value", async () => {
+    renderEditMode();
+
+    // Hidden input transports the controlled state — starts at the stored value
+    expect(hiddenInputValue("stockMinimo")).toBe("5");
+
+    fireEvent.change(screen.getByLabelText("Stock Mínimo"), {
+      target: { value: "10" },
+    });
+    expect(hiddenInputValue("stockMinimo")).toBe("10");
+
+    fireEvent.submit(document.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(actionsMock.updateArticuloAction).toHaveBeenCalledWith(
+        "art-1",
+        expect.objectContaining({ stockMinimo: 10 }),
+      );
+    });
+    expect(actionsMock.createArticuloAction).not.toHaveBeenCalled();
+  });
+
+  it("3.3 edit mode: untouched stockMinimo is excluded from the payload (preserved on partial update)", async () => {
+    renderEditMode();
+
+    // Only touch a different field — stockMinimo stays at its stored value
+    fireEvent.change(screen.getByLabelText("Nombre"), {
+      target: { value: "Papas Saborizadas" },
+    });
+    expect(hiddenInputValue("stockMinimo")).toBe("5");
+
+    fireEvent.submit(document.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(actionsMock.updateArticuloAction).toHaveBeenCalledWith(
+        "art-1",
+        expect.objectContaining({ nombre: "Papas Saborizadas" }),
+      );
+    });
+
+    // Dirty-filtered payload must NOT carry stockMinimo — omitting it is what
+    // lets the server preserve the original value on a partial update.
+    const payload = actionsMock.updateArticuloAction.mock.calls[0]![1] as Record<
+      string,
+      unknown
+    >;
+    expect(payload).not.toHaveProperty("stockMinimo");
   });
 });

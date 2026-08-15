@@ -31,27 +31,32 @@ export const MetodoPagoEnum = z.enum([
 
 // ─── SCHEMAS ───────────────────────────────────────
 
-// Base schema without refine — needed for partial() to work
+// Base schema without refine — needed for partial() to work.
+// NOTE: stockMinimo intentionally has NO default here: zod's `.partial()`
+// re-applies `.default()` values for keys absent from the payload, which
+// would inject stockMinimo: 0 into a partial UPDATE (resetting an untouched
+// field). The default lives on the CREATE schema only.
 const articuloBaseSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido").max(100),
   categoria: CategoriaEnum,
   presentacion: PresentacionEnum,
   costo: z.number().int().positive("El costo debe ser mayor a 0"),
   precio: z.number().int().positive("El precio debe ser mayor a 0"),
-  stockMinimo: z
-    .number()
-    .int()
-    .min(0, "El stock mínimo no puede ser negativo")
-    .default(0),
+  stockMinimo: z.number().int().min(0, "El stock mínimo no puede ser negativo"),
 });
 
-export const createArticuloSchema = articuloBaseSchema.refine(
-  (data) => data.precio > data.costo,
-  {
+export const createArticuloSchema = articuloBaseSchema
+  .extend({
+    stockMinimo: z
+      .number()
+      .int()
+      .min(0, "El stock mínimo no puede ser negativo")
+      .default(0),
+  })
+  .refine((data) => data.precio > data.costo, {
     message: "El precio debe ser mayor al costo",
     path: ["precio"],
-  },
-);
+  });
 
 // Update: partial — every field is optional, including stockActual for manual adjustments
 // Conditional refine: precio > costo only when BOTH fields are present in the payload
